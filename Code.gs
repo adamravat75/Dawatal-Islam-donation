@@ -339,35 +339,33 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
 
     var finalArea = updatedData.area || originalArea || 'Unallocated';
     var fullName = updatedData.fullName || '';
-    var parts = fullName.split(/\s+/);
-    var firstName = parts[0] || '';
-    var surname = parts.slice(1).join(' ') || '';
     var houseNum = updatedData.houseNum || '';
     var street = updatedData.street || '';
     var phone = updatedData.phone || '';
     var email = updatedData.email || '';
     var occupation = updatedData.occupation || '';
     var type = updatedData.type || 'Member';
-    var status = updatedData.status || 'Unpaid';
+    var status = updatedData.status || '';
     var notes = updatedData.notes || '';
 
     var isMember = type.toLowerCase().includes('member') && !type.toLowerCase().includes('non');
+    if (status === 'N/A' || !isMember) status = 'N/A';
 
     if (actionType === 'New Resident Sign-up' || actionType === 'Add' || !communityRow) {
-      // 1. Update All Community sheet with correct column mapping
+      // 1. Update All Community sheet with correct strict column mapping:
+      // Col A: Area | Col B: Full Name | Col C: House No | Col D: Street | Col E: Phone | Col F: Email | Col G: Occupation | Col H: Type | Col I: Status | Col J: Notes
       var targetSheet = ss.getSheetByName('All Community') || ss.insertSheet('All Community');
       targetSheet.appendRow([
-        firstName,
-        surname,
-        houseNum,
-        street,
-        phone,
-        email,
-        occupation,
-        type,
-        status,
-        notes,
-        finalArea
+        finalArea,    // Col A (1)
+        fullName,     // Col B (2)
+        houseNum,     // Col C (3)
+        street,       // Col D (4)
+        phone,        // Col E (5)
+        email,        // Col F (6)
+        occupation,   // Col G (7)
+        type,         // Col H (8)
+        status,       // Col I (9)
+        notes         // Col J (10)
       ]);
 
       // 2. Conditionally update People worksheet ONLY if Type is Member
@@ -392,8 +390,8 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
           targetSheet.deleteRow(parseInt(communityRow));
         } else {
           var rIdx = parseInt(communityRow);
-          targetSheet.getRange(rIdx, 1).setValue(firstName);
-          targetSheet.getRange(rIdx, 2).setValue(surname);
+          targetSheet.getRange(rIdx, 1).setValue(finalArea);
+          targetSheet.getRange(rIdx, 2).setValue(fullName);
           targetSheet.getRange(rIdx, 3).setValue(houseNum);
           targetSheet.getRange(rIdx, 4).setValue(street);
           targetSheet.getRange(rIdx, 5).setValue(phone);
@@ -402,9 +400,6 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
           targetSheet.getRange(rIdx, 8).setValue(type);
           targetSheet.getRange(rIdx, 9).setValue(status);
           targetSheet.getRange(rIdx, 10).setValue(notes);
-          if (targetSheet.getLastColumn() >= 11) {
-            targetSheet.getRange(rIdx, 11).setValue(finalArea);
-          }
 
           var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
           var peopleData = peopleSheet.getDataRange().getValues();
