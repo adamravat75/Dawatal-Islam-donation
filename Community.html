@@ -190,7 +190,6 @@
 
           if (filteredPeople.length === 0) continue;
 
-          // SORT NUMERICALLY BY HOUSE NUMBER WITHIN EACH STREET GROUP
           filteredPeople.sort((a, b) => {
               const numA = parseInt((a.houseNum || '0').replace(/\D/g, '')) || 0;
               const numB = parseInt((b.houseNum || '0').replace(/\D/g, '')) || 0;

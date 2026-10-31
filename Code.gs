@@ -23,22 +23,6 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
 }
 
-function findOrGetNotesColumn(pHeaders, peopleSheet) {
-  var notesIdx = -1;
-  for (var c = 0; c < pHeaders.length; c++) {
-    var h = pHeaders[c] ? pHeaders[c].toString().trim().toLowerCase() : '';
-    if (h === 'notes' || h === 'note' || h.includes('note')) {
-      notesIdx = c;
-      break;
-    }
-  }
-  if (notesIdx === -1 && peopleSheet) {
-    notesIdx = pHeaders.length;
-    peopleSheet.getRange(1, notesIdx + 1).setValue('Notes');
-  }
-  return notesIdx;
-}
-
 function getDatabase() {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -46,28 +30,16 @@ function getDatabase() {
       return { success: false, error: "Active spreadsheet not found.", members: [], donations: [], pendingUpdates: [] };
     }
     
-    // 1. Load People Sheet
-    var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people') || ss.getSheets()[0];
+    // 1. SAFE PEOPLE FETCH
     var members = [];
-    if (peopleSheet) {
-      var peopleData = peopleSheet.getDataRange().getValues();
-      if (peopleData && peopleData.length > 0) {
+    try {
+      var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people') || ss.getSheets()[0];
+      if (peopleSheet && peopleSheet.getLastRow() > 1) {
+        var peopleData = peopleSheet.getDataRange().getValues();
         var pHeaders = peopleData[0];
-        var pCol = { fullName: 1, houseNo: 2, address: 3, postcode: 4, phone: 5, email: 6, type: 7 };
-        for (var c = 0; c < pHeaders.length; c++) {
-          var h = pHeaders[c] ? pHeaders[c].toString().trim().toLowerCase() : '';
-          if (h.includes('email')) pCol.email = c;
-          else if (h.includes('full name') || h === 'name') pCol.fullName = c;
-          else if (h.includes('house')) pCol.houseNo = c;
-          else if (h.includes('address') || h.includes('street')) pCol.address = c;
-          else if (h.includes('postcode')) pCol.postcode = c;
-          else if (h.includes('contact number') || h.includes('phone') || h.includes('mobile')) pCol.phone = c;
-          else if (h.includes('contact type') || h.includes('type')) pCol.type = c;
-        }
-        var notesColIdx = findOrGetNotesColumn(pHeaders, peopleSheet);
         for (var i = 1; i < peopleData.length; i++) {
           var row = peopleData[i];
-          var fullName = row[pCol.fullName] ? row[pCol.fullName].toString().trim() : '';
+          var fullName = row[1] ? row[1].toString().trim() : (row[0] ? row[0].toString().trim() : '');
           if (!fullName) continue;
           var parts = fullName.split(/\s+/);
           var member = {
@@ -76,105 +48,93 @@ function getDatabase() {
             'Full Name': fullName,
             'First Name': parts[0] || '',
             'Surname': parts.slice(1).join(' ') || '',
-            'House Number': row[pCol.houseNo] !== undefined ? row[pCol.houseNo].toString().trim() : '',
-            'Address': row[pCol.address] !== undefined ? row[pCol.address].toString().trim() : '',
-            'Postcode': row[pCol.postcode] !== undefined ? row[pCol.postcode].toString().trim() : '',
-            'Contact Number': row[pCol.phone] !== undefined ? row[pCol.phone].toString().trim() : '',
-            'Email Address': row[pCol.email] !== undefined ? row[pCol.email].toString().trim() : '',
-            'Contact Type': row[pCol.type] !== undefined ? row[pCol.type].toString().trim() : '',
-            'Notes': (notesColIdx !== -1 && row[notesColIdx] !== undefined) ? row[notesColIdx].toString().trim() : ''
+            'House Number': row[2] !== undefined && row[2] !== null ? row[2].toString().trim() : '',
+            'Address': row[3] !== undefined && row[3] !== null ? row[3].toString().trim() : '',
+            'Postcode': row[4] !== undefined && row[4] !== null ? row[4].toString().trim() : '',
+            'Contact Number': row[5] !== undefined && row[5] !== null ? row[5].toString().trim() : '',
+            'Email Address': row[6] !== undefined && row[6] !== null ? row[6].toString().trim() : '',
+            'Notes': row[7] !== undefined && row[7] !== null ? row[7].toString().trim() : ''
           };
           for (var c = 0; c < pHeaders.length; c++) {
             var headerName = pHeaders[c] ? pHeaders[c].toString().trim() : '';
             if (headerName && headerName.toLowerCase().includes('membership')) {
-              member[headerName] = row[c] !== undefined && row[c] !== '' ? row[c].toString().trim() : 'Unpaid';
+              var val = row[c];
+              member[headerName] = (val !== undefined && val !== null && val !== '') ? val.toString().trim() : 'Unpaid';
             }
           }
           members.push(member);
         }
       }
+    } catch (errP) {
+      console.error("People read error: " + errP.toString());
     }
 
-    // 2. Load Donations Sheet
-    var donSheet = ss.getSheetByName('Donations') || ss.getSheetByName('Donations Log') || ss.getSheetByName('donations');
+    // 2. SAFE DONATIONS FETCH
     var donations = [];
-    if (donSheet) {
-      var donData = donSheet.getDataRange().getValues();
-      if (donData.length > 0) {
-        var dHeaders = donData[0];
-        var dCol = { date: -1, firstName: -1, surname: -1, type: -1, amount: -1, method: -1, giftAid: -1, houseNo: -1, postcode: -1, street: -1, bookNo: -1, invoiceNo: -1 };
-        for (var c = 0; c < dHeaders.length; c++) {
-          var h = dHeaders[c] ? dHeaders[c].toString().trim().toLowerCase() : '';
-          if (h.includes('date')) dCol.date = c;
-          else if (h.includes('first name') || h === 'name') dCol.firstName = c;
-          else if (h.includes('surname') || h.includes('last name')) dCol.surname = c;
-          else if (h.includes('donation type') || h === 'type') dCol.type = c;
-          else if (h.includes('amount')) dCol.amount = c;
-          else if (h.includes('payment') || h.includes('method')) dCol.method = c;
-          else if (h.includes('gift aid')) dCol.giftAid = c;
-          else if (h.includes('house')) dCol.houseNo = c;
-          else if (h.includes('postcode')) dCol.postcode = c;
-          else if (h.includes('street') || (h.includes('address') && !h.includes('email'))) dCol.street = c;
-          else if (h.includes('book')) dCol.bookNo = c;
-          else if (h.includes('invoice')) dCol.invoiceNo = c;
-        }
+    try {
+      var donSheet = ss.getSheetByName('Donations') || ss.getSheetByName('Donations Log');
+      if (donSheet && donSheet.getLastRow() > 1) {
+        var donData = donSheet.getDataRange().getValues();
         for (var i = 1; i < donData.length; i++) {
           var row = donData[i];
-          var firstName = (dCol.firstName !== -1 && row[dCol.firstName] !== undefined) ? row[dCol.firstName].toString().trim() : '';
-          var surname = (dCol.surname !== -1 && row[dCol.surname] !== undefined) ? row[dCol.surname].toString().trim() : '';
-          var dateVal = (dCol.date !== -1 && row[dCol.date] !== undefined) ? row[dCol.date].toString().trim() : '';
-          var rawAmt = (dCol.amount !== -1 && row[dCol.amount] !== undefined) ? row[dCol.amount].toString().replace('£', '').trim() : '0';
-          if (!firstName && !dateVal && !rawAmt) continue;
+          var dateVal = row[0] instanceof Date ? row[0].toISOString().split('T')[0] : (row[0] ? row[0].toString().trim() : '');
+          var firstName = row[1] ? row[1].toString().trim() : '';
+          var surname = row[2] ? row[2].toString().trim() : '';
+          var typeVal = row[3] ? row[3].toString().trim() : '';
+          var rawAmt = row[4] !== undefined && row[4] !== null ? row[4].toString().replace('£', '').trim() : '0';
           var amount = parseFloat(rawAmt);
           if (isNaN(amount)) amount = 0;
+          
           donations.push({
             'RowIndex': i + 1,
             'Date Paid': dateVal,
             'First Name': firstName,
             'Surname': surname,
-            'Donation Type': (dCol.type !== -1 && row[dCol.type] !== undefined) ? row[dCol.type].toString().trim() : '',
+            'Donation Type': typeVal,
             'Amount': amount,
-            'Payment Method': (dCol.method !== -1 && row[dCol.method] !== undefined) ? row[dCol.method].toString().trim() : 'Cash',
-            'Gift Aided?': (dCol.giftAid !== -1 && row[dCol.giftAid] !== undefined) ? row[dCol.giftAid].toString().trim() : 'No',
-            'House Number': (dCol.houseNo !== -1 && row[dCol.houseNo] !== undefined) ? row[dCol.houseNo].toString().trim() : '',
-            'Postcode': (dCol.postcode !== -1 && row[dCol.postcode] !== undefined) ? row[dCol.postcode].toString().trim() : '',
-            'Street': (dCol.street !== -1 && row[dCol.street] !== undefined) ? row[dCol.street].toString().trim() : '',
-            'Book Number': (dCol.bookNo !== -1 && row[dCol.bookNo] !== undefined) ? row[dCol.bookNo].toString().trim() : '',
-            'Invoice Number': (dCol.invoiceNo !== -1 && row[dCol.invoiceNo] !== undefined) ? row[dCol.invoiceNo].toString().trim() : ''
+            'Payment Method': row[5] !== undefined && row[5] !== null ? row[5].toString().trim() : 'Cash',
+            'Gift Aided?': row[6] !== undefined && row[6] !== null ? row[6].toString().trim() : 'No',
+            'House Number': row[7] !== undefined && row[7] !== null ? row[7].toString().trim() : '',
+            'Postcode': row[8] !== undefined && row[8] !== null ? row[8].toString().trim() : '',
+            'Street': row[9] !== undefined && row[9] !== null ? row[9].toString().trim() : '',
+            'Book Number': row[10] !== undefined && row[10] !== null ? row[10].toString().trim() : '',
+            'Invoice Number': row[11] !== undefined && row[11] !== null ? row[11].toString().trim() : ''
           });
         }
       }
+    } catch (errD) {
+      console.error("Donations read error: " + errD.toString());
     }
 
-    // 3. Load Pending Updates Sheet Safely
-    var pendingSheet = ss.getSheetByName('Pending_Updates') || ss.getSheetByName('Pending Updates');
-    if (!pendingSheet) {
-      pendingSheet = ss.insertSheet('Pending_Updates');
-      pendingSheet.appendRow(['Action Type', 'Community Row', 'Area', 'Full Name', 'House Number', 'Street', 'Phone', 'Type', 'Status', 'Notes', 'Occupation', 'Email', 'Timestamp']);
-    }
-    
+    // 3. SAFE PENDING UPDATES FETCH
     var pendingUpdates = [];
-    var pData = pendingSheet.getDataRange().getValues();
-    if (pData && pData.length > 1) {
-      for (var i = 1; i < pData.length; i++) {
-        var r = pData[i];
-        pendingUpdates.push({
-          'RowIndex': i + 1,
-          'ActionType': r[0] || 'Note Update',
-          'CommunityRow': r[1] || '',
-          'Area': r[2] || '',
-          'Full Name': r[3] || '',
-          'House Number': r[4] || '',
-          'Street': r[5] || '',
-          'Phone': r[6] || '',
-          'Type': r[7] || '',
-          'Status': r[8] || '',
-          'Notes': r[9] || '',
-          'Occupation': r[10] || '',
-          'Email': r[11] || '',
-          'Timestamp': r[12] || ''
-        });
+    try {
+      var pendingSheet = ss.getSheetByName('Pending_Updates') || ss.getSheetByName('Pending Updates');
+      if (pendingSheet && pendingSheet.getLastRow() > 1) {
+        var pData = pendingSheet.getDataRange().getValues();
+        for (var i = 1; i < pData.length; i++) {
+          var r = pData[i];
+          var ts = r[12] instanceof Date ? r[12].toISOString() : (r[12] ? r[12].toString() : '');
+          pendingUpdates.push({
+            'RowIndex': i + 1,
+            'ActionType': r[0] ? r[0].toString() : 'Note Update',
+            'CommunityRow': r[1] !== undefined ? r[1].toString() : '',
+            'Area': r[2] !== undefined ? r[2].toString() : '',
+            'Full Name': r[3] !== undefined ? r[3].toString() : '',
+            'House Number': r[4] !== undefined ? r[4].toString() : '',
+            'Street': r[5] !== undefined ? r[5].toString() : '',
+            'Phone': r[6] !== undefined ? r[6].toString() : '',
+            'Type': r[7] !== undefined ? r[7].toString() : '',
+            'Status': r[8] !== undefined ? r[8].toString() : '',
+            'Notes': r[9] !== undefined ? r[9].toString() : '',
+            'Occupation': r[10] !== undefined ? r[10].toString() : '',
+            'Email': r[11] !== undefined ? r[11].toString() : '',
+            'Timestamp': ts
+          });
+        }
       }
+    } catch (errU) {
+      console.error("Pending updates read error: " + errU.toString());
     }
 
     return { success: true, members: members, donations: donations, pendingUpdates: pendingUpdates };
@@ -190,83 +150,21 @@ function addDonation(donation) {
     donSheet = ss.insertSheet('Donations');
     donSheet.appendRow(['Date Paid', 'First Name', 'Surname', 'Donation Type', 'Amount', 'Payment Method', 'Gift Aided?', 'House Number', 'Postcode', 'Street Name', 'Book Number', 'Invoice Number']);
   }
-  var donData = donSheet.getDataRange().getValues();
-  var dHeaders = donData[0];
-  var colMap = {};
-  for (var c = 0; c < dHeaders.length; c++) {
-    var h = dHeaders[c] ? dHeaders[c].toString().trim().toLowerCase() : '';
-    if (h.includes('date')) colMap['Date Paid'] = c + 1;
-    else if (h.includes('first name') || h === 'name') colMap['First Name'] = c + 1;
-    else if (h.includes('surname') || h.includes('last name')) colMap['Surname'] = c + 1;
-    else if (h.includes('donation type') || h === 'type') colMap['Donation Type'] = c + 1;
-    else if (h.includes('amount')) colMap['Amount'] = c + 1;
-    else if (h.includes('payment') || h.includes('method')) colMap['Payment Method'] = c + 1;
-    else if (h.includes('gift aid')) colMap['Gift Aided?'] = c + 1;
-    else if (h.includes('house')) colMap['House Number'] = c + 1;
-    else if (h.includes('postcode')) colMap['Postcode'] = c + 1;
-    else if (h.includes('street') || (h.includes('address') && !h.includes('email'))) colMap['Street'] = c + 1;
-    else if (h.includes('book')) colMap['Book Number'] = c + 1;
-    else if (h.includes('invoice')) colMap['Invoice Number'] = c + 1;
-  }
   
-  var maxCol = dHeaders.length;
-  var requiredFields = ['Date Paid', 'First Name', 'Surname', 'Donation Type', 'Amount', 'Payment Method', 'Gift Aided?', 'House Number', 'Postcode', 'Street', 'Book Number', 'Invoice Number'];
-  requiredFields.forEach(function(field) {
-    if (!colMap[field]) {
-      maxCol++;
-      donSheet.getRange(1, maxCol).setValue(field === 'Street' ? 'Street Name' : field);
-      colMap[field] = maxCol;
-    }
-  });
-
-  var newRow = new Array(donSheet.getLastColumn());
-  var firstName = donation['First Name'] ? donation['First Name'].toString().trim() : '';
-  var surname = donation['Surname'] ? donation['Surname'].toString().trim() : '';
-  if (colMap['Date Paid']) newRow[colMap['Date Paid'] - 1] = donation['Date Paid'];
-  if (colMap['First Name']) newRow[colMap['First Name'] - 1] = firstName;
-  if (colMap['Surname']) newRow[colMap['Surname'] - 1] = surname;
-  if (colMap['Donation Type']) newRow[colMap['Donation Type'] - 1] = donation['Donation Type'];
-  if (colMap['Amount']) newRow[colMap['Amount'] - 1] = donation['Amount'];
-  if (colMap['Payment Method']) newRow[colMap['Payment Method'] - 1] = donation['Payment Method'];
-  if (colMap['Gift Aided?']) newRow[colMap['Gift Aided?'] - 1] = donation['Gift Aided?'];
-  if (colMap['House Number']) newRow[colMap['House Number'] - 1] = donation['House Number'] || '';
-  if (colMap['Postcode']) newRow[colMap['Postcode'] - 1] = donation['Postcode'] || '';
-  if (colMap['Street']) newRow[colMap['Street'] - 1] = donation['Street'] || '';
-  if (colMap['Book Number']) newRow[colMap['Book Number'] - 1] = donation['Book Number'] || '';
-  if (colMap['Invoice Number']) newRow[colMap['Invoice Number'] - 1] = donation['Invoice Number'] || '';
-  donSheet.appendRow(newRow);
-
-  if (donation['Is Member Fee'] === 'Yes') {
-    var datePaidStr = donation['Date Paid'] ? donation['Date Paid'].toString() : '';
-    var yearMatch = datePaidStr.match(/\d{4}/);
-    if (yearMatch) {
-      var payYear = yearMatch[0];
-      var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
-      var peopleData = peopleSheet.getDataRange().getValues();
-      var pHeaders = peopleData[0];
-      var targetColIdx = -1;
-      var targetHeaderName = 'Membership ' + payYear;
-      for (var c = 0; c < pHeaders.length; c++) {
-        if (pHeaders[c].toString().trim().toLowerCase() === targetHeaderName.toLowerCase()) {
-          targetColIdx = c + 1;
-          break;
-        }
-      }
-      if (targetColIdx === -1) {
-        peopleSheet.insertColumnAfter(pHeaders.length);
-        targetColIdx = pHeaders.length + 1;
-        peopleSheet.getRange(1, targetColIdx).setValue(targetHeaderName);
-      }
-      var fullTargetName = (firstName + ' ' + surname).toLowerCase();
-      for (var r = 1; r < peopleData.length; r++) {
-        var sheetName = peopleData[r][1] ? peopleData[r][1].toString().trim().toLowerCase() : '';
-        if (sheetName === fullTargetName) {
-          peopleSheet.getRange(r + 1, targetColIdx).setValue(donation['Donation Type']);
-          break;
-        }
-      }
-    }
-  }
+  donSheet.appendRow([
+    donation['Date Paid'],
+    donation['First Name'],
+    donation['Surname'],
+    donation['Donation Type'],
+    donation['Amount'],
+    donation['Payment Method'],
+    donation['Gift Aided?'],
+    donation['House Number'] || '',
+    donation['Postcode'] || '',
+    donation['Street'] || '',
+    donation['Book Number'] || '',
+    donation['Invoice Number'] || ''
+  ]);
   return 'Success';
 }
 
@@ -281,22 +179,19 @@ function deleteDonationByRow(rowIndex) {
 function addMember(member) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
-  var peopleData = peopleSheet.getDataRange().getValues();
-  var pHeaders = peopleData[0];
-  var notesColIdx = findOrGetNotesColumn(pHeaders, peopleSheet) + 1;
-  var nextId = peopleData.length;
+  var nextId = peopleSheet.getLastRow();
   var fullName = (member['First Name'] + ' ' + (member['Surname'] || '')).trim();
   
-  var rowValues = [
+  peopleSheet.appendRow([
     nextId,
     fullName,
     member['House Number'] || '',
     member['Address'] || '',
     member['Postcode'] || '',
     member['Contact Number'] || '',
-    member['Email Address'] || ''
-  ];
-  peopleSheet.appendRow(rowValues);
+    member['Email Address'] || '',
+    member['Notes'] || ''
+  ]);
   return 'Success';
 }
 
@@ -313,6 +208,9 @@ function updateMember(member) {
   peopleSheet.getRange(rowIndex, 5).setValue(member['Postcode'] || '');
   peopleSheet.getRange(rowIndex, 6).setValue(member['Contact Number'] || '');
   peopleSheet.getRange(rowIndex, 7).setValue(member['Email Address'] || '');
+  if (member['Notes'] !== undefined) {
+    peopleSheet.getRange(rowIndex, 8).setValue(member['Notes']);
+  }
   return 'Success';
 }
 
@@ -322,6 +220,84 @@ function deleteMemberByRow(rowIndex) {
   if (!peopleSheet || rowIndex <= 1) return 'Error';
   peopleSheet.deleteRow(rowIndex);
   return 'Success';
+}
+
+function getFilteredCommunityData(selectedAreas, statusFilter) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('All Community') || ss.getSheetByName('All_Community') || ss.getSheetByName('Community');
+    if (!sheet) sheet = ss.getSheets()[0];
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return {};
+
+    var headers = data[0];
+    var col = { fullName: 1, houseNo: 2, street: 3, contact: 4, email: 5, occupation: 6, type: 7, status: 8, notes: 9, area: 0 };
+
+    for (var c = 0; c < headers.length; c++) {
+      var h = headers[c] ? headers[c].toString().trim().toLowerCase() : '';
+      if (h.includes('full name') || h === 'name' || h.includes('resident')) col.fullName = c;
+      else if (h.includes('house')) col.houseNo = c;
+      else if ((h.includes('street') || h.includes('address')) && !h.includes('email')) col.street = c;
+      else if (h.includes('phone') || h.includes('contact') || h.includes('mobile')) col.contact = c;
+      else if (h.includes('email')) col.email = c;
+      else if (h.includes('occupation')) col.occupation = c;
+      else if (h.includes('type') || h.includes('member/non')) col.type = c;
+      else if (h.includes('status') || h.includes('payment')) col.status = c;
+      else if (h.includes('note')) col.notes = c;
+      else if (h.includes('area')) col.area = c;
+    }
+
+    var groupedData = {};
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var fullName = row[col.fullName] !== undefined ? row[col.fullName].toString().trim() : '';
+      if (!fullName) continue;
+
+      var rowArea = row[col.area] !== undefined && row[col.area] !== '' ? row[col.area].toString().trim() : 'Unallocated';
+      if (!rowArea.toLowerCase().includes('area') && rowArea !== 'Unallocated') {
+        rowArea = 'Area ' + rowArea;
+      }
+
+      if (selectedAreas && !selectedAreas.includes('All')) {
+        var matchFound = selectedAreas.some(function(sel) {
+          return sel.toLowerCase() === rowArea.toLowerCase() || 
+                 rowArea.toLowerCase().includes(sel.toLowerCase()) || 
+                 sel.toLowerCase().includes(rowArea.toLowerCase());
+        });
+        if (!matchFound) continue;
+      }
+
+      var statusType = row[col.type] !== undefined ? row[col.type].toString().trim() : 'Member';
+      if (statusFilter && statusFilter !== 'All') {
+        if (statusFilter === 'Member' && !statusType.toLowerCase().includes('member')) continue;
+        if (statusFilter === 'Non-Member' && !statusType.toLowerCase().includes('non')) continue;
+      }
+
+      var streetName = row[col.street] !== undefined && row[col.street] !== '' ? row[col.street].toString().trim() : (rowArea + ' (General)');
+
+      if (!groupedData[streetName]) groupedData[streetName] = [];
+
+      groupedData[streetName].push({
+        id: i + 1,
+        area: rowArea,
+        fullName: fullName,
+        houseNum: row[col.houseNo] !== undefined ? row[col.houseNo].toString().trim() : '',
+        street: streetName,
+        contact: row[col.contact] !== undefined ? row[col.contact].toString().trim() : '',
+        email: row[col.email] !== undefined ? row[col.email].toString().trim() : '',
+        occupation: row[col.occupation] !== undefined ? row[col.occupation].toString().trim() : '',
+        status: statusType,
+        paymentStatus: row[col.status] !== undefined && row[col.status] !== '' ? row[col.status].toString().trim() : 'Unpaid',
+        notes: row[col.notes] !== undefined ? row[col.notes].toString().trim() : ''
+      });
+    }
+
+    return groupedData;
+  } catch (err) {
+    return { error: err.toString() };
+  }
 }
 
 function submitCommunityUpdate(payload) {
@@ -362,10 +338,7 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
     var communityRow = pData[1];
 
     if (actionType === 'New Resident Sign-up') {
-      var targetSheet = ss.getSheetByName(area) || ss.insertSheet(area);
-      if (targetSheet.getLastRow() === 0) {
-        targetSheet.appendRow(['First Name', 'Last Name', 'House Number', 'Street Name', 'Telephone Number', 'Email Address', 'Occupation', 'Type', 'Payment Status', 'Notes']);
-      }
+      var targetSheet = ss.getSheetByName('All Community') || ss.insertSheet('All Community');
       targetSheet.appendRow([
         updatedData.fullName.split(' ')[0] || '',
         updatedData.fullName.split(' ').slice(1).join(' ') || '',
@@ -378,14 +351,14 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
         updatedData.status || 'Unpaid',
         updatedData.notes || ''
       ]);
-    } else if (communityRow && area) {
-      var targetSheet = ss.getSheetByName(area);
+    } else if (communityRow) {
+      var targetSheet = ss.getSheetByName('All Community');
       if (targetSheet) {
         if (actionType === 'Delete') {
           targetSheet.deleteRow(parseInt(communityRow));
         } else {
           targetSheet.getRange(parseInt(communityRow), 1).setValue(updatedData.fullName.split(' ')[0] || '');
-          targetSpeed.getRange(parseInt(communityRow), 2).setValue(updatedData.fullName.split(' ').slice(1).join(' ') || '');
+          targetSheet.getRange(parseInt(communityRow), 2).setValue(updatedData.fullName.split(' ').slice(1).join(' ') || '');
           targetSheet.getRange(parseInt(communityRow), 3).setValue(updatedData.houseNum || '');
           targetSheet.getRange(parseInt(communityRow), 4).setValue(updatedData.street || '');
           targetSheet.getRange(parseInt(communityRow), 5).setValue(updatedData.phone || '');
