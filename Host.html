@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dawatal Islam - Portal Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .theme-green { background-color: #064e3b; }
+        .theme-green-text { color: #064e3b; }
+        body { background-color: #f3f4f6; margin: 0; padding: 0; }
+        .portal-card { transition: all 0.2s ease-in-out; }
+        .portal-card:hover { transform: translateY(-3px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+    </style>
+</head>
+<body class="font-sans text-gray-900 min-h-screen flex flex-col justify-between">
+    
+    <!-- Top Header Banner -->
+    <header class="theme-green text-white shadow-lg border-b-4 border-emerald-500 py-6 px-4 text-center">
+        <div class="max-w-md mx-auto flex flex-col items-center space-y-2">
+            <div class="bg-white/15 p-3.5 rounded-2xl border border-emerald-400/30 flex items-center justify-center shadow-inner">
+                <i class="fa-solid fa-mosque text-4xl text-emerald-300"></i>
+            </div>
+            <div>
+                <span class="text-xs uppercase tracking-widest text-emerald-300 font-bold">Dawatal Islam Mosque</span>
+                <h1 class="text-2xl font-extrabold tracking-tight mt-0.5">Management Hub</h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Selection Cards -->
+    <main class="max-w-md mx-auto px-4 py-8 w-full flex-grow flex flex-col justify-center space-y-5">
+        <div class="text-center mb-2">
+            <p class="text-sm text-gray-600 font-medium">Please select the portal you wish to access below:</p>
+        </div>
+
+        <!-- Admin Portal Smart Card -->
+        <div onclick="openAdmin()" class="portal-card bg-white p-6 rounded-2xl shadow-md border-2 border-emerald-700/20 cursor-pointer flex items-center space-x-5 relative overflow-hidden group">
+            <div class="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition">
+                <i class="fa-solid fa-shield-halved text-9xl theme-green-text"></i>
+            </div>
+            <div class="theme-green text-white p-4 rounded-xl shadow flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-user-shield text-2xl"></i>
+            </div>
+            <div class="flex-grow">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-gray-900 group-hover:text-emerald-800 transition">Admin Portal</h2>
+                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-emerald-700 transition"></i>
+                </div>
+                <p class="text-xs text-gray-500 mt-1 leading-relaxed">Member database search, fee status tracker, donation logging, and review approval hub.</p>
+            </div>
+        </div>
+
+        <!-- Community Portal Smart Card -->
+        <div onclick="openCommunity()" class="portal-card bg-white p-6 rounded-2xl shadow-md border-2 border-emerald-700/20 cursor-pointer flex items-center space-x-5 relative overflow-hidden group">
+            <div class="absolute -right-6 -bottom-6 opacity-5 group-hover:opacity-10 transition">
+                <i class="fa-solid fa-users text-9xl text-amber-700"></i>
+            </div>
+            <div class="bg-amber-600 text-white p-4 rounded-xl shadow flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-people-roof text-2xl"></i>
+            </div>
+            <div class="flex-grow">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-gray-900 group-hover:text-amber-800 transition">Community Portal</h2>
+                    <i class="fa-solid fa-chevron-right text-gray-400 group-hover:text-amber-700 transition"></i>
+                </div>
+                <p class="text-xs text-gray-500 mt-1 leading-relaxed">Area-by-area resident lists, mobile-friendly search, payment filters, and note submissions.</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-4 px-4 text-center text-xs text-gray-400 border-t bg-white">
+        Dawatal Islam Mosque Management System &copy; 2026
+    </footer>
+
+    <script>
+        function openAdmin() {
+            window.top.location.href = "<?= scriptUrl ?>?portal=admin";
+        }
+
+        function openCommunity() {
+            window.top.location.href = "<?= scriptUrl ?>?portal=community";
+        }
+    </script>
+</body>
+</html>

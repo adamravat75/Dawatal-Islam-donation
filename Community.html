@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dawatal Islam - Community Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .theme-green { background-color: #064e3b; }
+        body { background-color: #f3f4f6; margin: 0; padding: 0; }
+    </style>
+</head>
+<body class="font-sans text-gray-950">
+    <!-- Community Login Screen -->
+    <div id="community-login-screen" class="flex min-h-screen items-center justify-center p-4 bg-gray-100 absolute inset-0 z-50">
+      <div class="bg-white p-6 rounded-xl shadow-lg w-full max-w-sm border-t-4 border-emerald-600">
+        <div class="text-center mb-5">
+          <i class="fa-solid fa-mosque text-3xl text-emerald-600 mb-2"></i>
+          <h2 class="text-xl font-extrabold text-gray-800">Community Portal</h2>
+          <p class="text-xs text-gray-500">Please enter your area password</p>
+        </div>
+        <input type="password" id="community-password-input" class="w-full border border-gray-300 p-3 rounded-lg mb-3 text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none" placeholder="Password..." onkeydown="if(event.key === 'Enter') checkCommunityPassword()">
+        <button onclick="checkCommunityPassword()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-3 rounded-lg text-sm font-bold shadow">Login</button>
+        <p id="community-login-error" class="text-red-500 text-xs mt-3 hidden text-center font-semibold">Incorrect password.</p>
+      </div>
+    </div>
+
+    <!-- Community App Content -->
+    <div class="flex flex-col min-h-screen w-full bg-gray-100">
+      <header class="theme-green text-white px-3 py-2.5 flex justify-between items-center shadow-md">
+        <div class="flex items-center space-x-1.5">
+          <i class="fa-solid fa-mosque text-base text-emerald-300"></i>
+          <h1 class="text-xs font-bold">Community Portal</h1>
+        </div>
+        <div class="flex gap-1.5 items-center">
+            <button onclick="goToAdminPortal()" class="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-lock mr-1"></i>Admin</button>
+            <button onclick="showAddPersonModal()" class="bg-white text-emerald-800 px-2.5 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-user-plus mr-1"></i>Add</button>
+            <button onclick="window.location.reload()" class="bg-red-600 text-white px-2 py-1 rounded text-[11px] font-bold shadow"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </div>
+      </header>
+
+      <div class="p-3 bg-white border-b shadow-sm space-y-2.5">
+        <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400"><i class="fa-solid fa-magnifying-glass text-xs"></i></span>
+            <input type="text" id="communitySearchInput" oninput="filterCommunityDisplay()" placeholder="Search resident by name, house no..." class="w-full pl-9 pr-3 py-2 border border-emerald-300 rounded-lg text-xs bg-gray-50 focus:ring-2 focus:ring-emerald-500">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-emerald-950 mb-1">Select Area(s):</label>
+          <select id="area-filter" multiple class="w-full border border-emerald-300 p-1.5 rounded text-xs h-16 bg-white font-medium">
+            <option value="All" selected>All Areas (Extract All)</option>
+            <option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option>
+            <option value="Area 4">Area 4</option><option value="Area 5">Area 5</option><option value="Area 6">Area 6</option>
+            <option value="Unallocated / Blank Area">Unallocated</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] font-bold mb-0.5 text-emerald-950">Member Status:</label>
+            <select id="status-filter" class="w-full border border-emerald-300 p-1.5 rounded text-xs bg-white"><option value="All">All Status</option><option value="Member">Members</option><option value="Non-Member">Non-Members</option></select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold mb-0.5 text-emerald-950">Payment Filter:</label>
+            <select id="payment-filter" class="w-full border border-emerald-300 p-1.5 rounded text-xs bg-white"><option value="All">All Payments</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option><option value="N/A">N/A / Other</option></select>
+          </div>
+        </div>
+        <button onclick="loadCommunityData()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg text-xs font-bold shadow">Apply Filters & Refresh</button>
+      </div>
+
+      <div class="p-3 space-y-3 pb-16 flex-grow" id="community-list">
+        <div class="text-center text-gray-500 mt-10 text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading community data...</div>
+      </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5 space-y-3 my-auto">
+        <div class="flex justify-between items-start border-b pb-2">
+          <div><h2 id="detail-name" class="text-lg font-extrabold text-gray-900"></h2><p id="detail-address" class="text-xs text-emerald-800 font-bold mt-0.5"></p></div>
+          <button onclick="closeModal('detail-modal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-gray-50 p-2.5 rounded border"><p class="text-[10px] text-gray-500 font-bold mb-1">Status & Occupation</p><div id="detail-status" class="space-y-0.5"></div></div>
+          <div class="bg-gray-50 p-2.5 rounded border"><p class="text-[10px] text-gray-500 font-bold mb-1">Contact & Email</p><div id="detail-contact" class="space-y-0.5"></div></div>
+        </div>
+        <div class="space-y-2 text-xs">
+            <label class="block font-bold text-gray-700">Status Action / Review Type</label>
+            <select id="detail-action-type" class="w-full border border-emerald-300 p-2 rounded font-bold bg-white text-emerald-900">
+                <option value="Note Update">Standard Note / Update</option>
+                <option value="Moved Away">Moved Away</option>
+                <option value="Delete">Delete Resident</option>
+                <option value="Deceased">Deceased</option>
+            </select>
+            <label class="block font-bold text-gray-700">Committee Notes / Details</label>
+            <textarea id="detail-note" class="w-full border border-gray-300 p-2 rounded text-xs" rows="2" placeholder="Enter notes..."></textarea>
+        </div>
+        <button onclick="submitCommunityNoteOrAction()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow">Submit for Admin Review</button>
+      </div>
+    </div>
+
+    <div id="add-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-5 space-y-3 my-auto">
+        <div class="flex justify-between items-center border-b pb-2">
+          <h2 class="text-base font-bold text-gray-900">Add New Resident</h2>
+          <button onclick="closeModal('add-modal')" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="space-y-2 text-xs">
+            <input type="text" id="comm-add-firstname" placeholder="First Name *" class="w-full border p-2 rounded">
+            <input type="text" id="comm-add-lastname" placeholder="Surname *" class="w-full border p-2 rounded">
+            <div class="flex space-x-2">
+                <input type="text" id="comm-add-housenum" placeholder="House No." class="w-1/3 border p-2 rounded">
+                <input type="text" id="comm-add-street" placeholder="Street Name *" class="w-2/3 border p-2 rounded">
+            </div>
+            <input type="text" id="comm-add-phone" placeholder="Telephone Number" class="w-full border p-2 rounded">
+            <input type="email" id="comm-add-email" placeholder="Email Address" class="w-full border p-2 rounded">
+            <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="comm-add-occupation" placeholder="Occupation" class="w-full border p-2 rounded">
+                <select id="comm-add-type" class="w-full border p-2 rounded bg-white"><option value="Member">Member</option><option value="Non-Member">Non-Member</option></select>
+            </div>
+            <select id="comm-add-area" class="w-full border p-2 rounded bg-white">
+              <option value="Area 1">Area 1</option><option value="Area 2">Area 2</option><option value="Area 3">Area 3</option><option value="Area 4">Area 4</option><option value="Area 5">Area 5</option><option value="Area 6">Area 6</option>
+            </select>
+            <textarea id="comm-add-notes" placeholder="Notes..." rows="2" class="w-full border p-2 rounded"></textarea>
+        </div>
+        <button onclick="submitNewResidentRequest()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow">Submit New Resident</button>
+      </div>
+    </div>
+
+    <script>
+      let globalGroupedCommunityData = {}, currentCommunityPerson = null;
+
+      function checkCommunityPassword() {
+        const pwd = document.getElementById('community-password-input').value.trim();
+        if (pwd === 'area123') {
+          document.getElementById('community-login-screen').classList.add('hidden');
+          window.scrollTo(0, 0);
+          loadCommunityData();
+        } else {
+          document.getElementById('community-login-error').classList.remove('hidden');
+        }
+      }
+
+      function goToAdminPortal() {
+        window.top.location.href = "<?= adminUrl ?>";
+      }
+
+      function loadCommunityData() {
+        const selectedAreas = Array.from(document.getElementById('area-filter').selectedOptions).map(opt => opt.value);
+        const statusFilter = document.getElementById('status-filter').value;
+        const paymentFilter = document.getElementById('payment-filter').value;
+        const container = document.getElementById('community-list');
+        container.innerHTML = '<div class="text-center text-gray-500 mt-10 text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i>Loading community data...</div>';
+
+        google.script.run.withSuccessHandler(function(groupedData) {
+            globalGroupedCommunityData = groupedData;
+            renderCommunityDisplay(paymentFilter);
+        }).getFilteredCommunityData(selectedAreas, statusFilter);
+      }
+
+      function filterCommunityDisplay() {
+          renderCommunityDisplay(document.getElementById('payment-filter').value);
+      }
+
+      function renderCommunityDisplay(paymentFilter) {
+        const container = document.getElementById('community-list');
+        container.innerHTML = '';
+        if (globalGroupedCommunityData.error) {
+            container.innerHTML = `<div class="text-center text-red-500 mt-10 text-xs">Error: ${globalGroupedCommunityData.error}</div>`;
+            return;
+        }
+        const searchQuery = document.getElementById('communitySearchInput').value.toLowerCase().trim();
+        let totalShown = 0;
+
+        for (const [streetName, people] of Object.entries(globalGroupedCommunityData)) {
+          const filteredPeople = people.filter(person => {
+              if (paymentFilter !== 'All') {
+                  const pStatus = (person.paymentStatus || 'Unpaid').toLowerCase();
+                  if (paymentFilter === 'Paid' && (pStatus.includes('unpaid') || pStatus === '')) return false;
+                  if (paymentFilter === 'Unpaid' && !pStatus.includes('unpaid')) return false;
+                  if (paymentFilter === 'N/A' && pStatus !== 'n/a') return false;
+              }
+              if (searchQuery) {
+                  const matchName = (person.fullName || '').toLowerCase().includes(searchQuery);
+                  const matchHouse = (person.houseNum || '').toLowerCase().includes(searchQuery);
+                  const matchPostcode = (person.postcode || '').toLowerCase().includes(searchQuery);
+                  if (!matchName && !matchHouse && !matchPostcode) return false;
+              }
+              return true;
+          });
+
+          if (filteredPeople.length === 0) continue;
+
+          // SORT NUMERICALLY BY HOUSE NUMBER WITHIN EACH STREET GROUP
+          filteredPeople.sort((a, b) => {
+              const numA = parseInt((a.houseNum || '0').replace(/\D/g, '')) || 0;
+              const numB = parseInt((b.houseNum || '0').replace(/\D/g, '')) || 0;
+              if (numA !== numB) return numA - numB;
+              return (a.houseNum || '').localeCompare(b.houseNum || '', undefined, {numeric: true});
+          });
+
+          totalShown += filteredPeople.length;
+
+          let html = `<div class="border border-emerald-700 rounded-lg shadow-sm bg-white overflow-hidden mb-3"><div class="theme-green text-white px-3 py-2 text-xs font-bold flex items-center justify-between"><span><i class="fa-solid fa-location-dot mr-1.5"></i>${streetName}</span><span class="text-[10px] bg-white text-emerald-900 px-2 py-0.5 rounded-full font-bold">${filteredPeople.length} resident(s)</span></div><div class="divide-y divide-gray-100">`;
+          
+          filteredPeople.forEach(person => {
+            const isUnpaid = person.paymentStatus.toLowerCase().includes('unpaid');
+            const fullName = person.fullName || 'Resident';
+            const houseDisplay = person.houseNum ? person.houseNum : '';
+            
+            html += `<div class="p-3 flex justify-between items-center cursor-pointer transition hover:bg-gray-50" onclick='openDetailModal(${JSON.stringify(person).replace(/'/g, "&#39;")})'>
+              <div>
+                <p class="font-bold text-gray-900 text-sm">${fullName}</p>
+                <p class="text-[11px] text-gray-500 mt-0.5">${houseDisplay} ${houseDisplay ? '|' : ''} ${person.status}</p>
+              </div>
+              <div class="flex items-center space-x-1.5">
+                <span class="text-[10px] bg-gray-200 text-gray-700 px-1.5 py-0.5 rounded font-medium">${person.area || ''}</span>
+                <div class="text-[11px] font-bold ${isUnpaid ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'} px-2 py-1 rounded shadow-sm">${person.paymentStatus || 'Unpaid'}</div>
+              </div>
+            </div>`;
+          });
+          html += `</div></div>`;
+          container.innerHTML += html;
+        }
+        if (totalShown === 0) container.innerHTML = '<div class="text-center text-gray-500 mt-10 text-xs">No records match your search or filters.</div>';
+      }
+
+      function openDetailModal(person) {
+        currentCommunityPerson = person;
+        const displayName = person.fullName || 'Resident';
+        document.getElementById('detail-name').innerText = displayName;
+        document.getElementById('detail-address').innerText = `${person.houseNum || ''} ${person.street ? ', ' + person.street : ''} (${person.area || ''})`;
+        
+        const isUnpaid = person.paymentStatus.toLowerCase().includes('unpaid');
+        document.getElementById('detail-status').innerHTML = `
+          <span class="block text-gray-800 font-bold">Type: ${person.status}</span>
+          <span class="block ${isUnpaid ? 'text-red-600 font-bold' : 'text-emerald-600 font-bold'}">Payment: ${person.paymentStatus}</span>
+          <span class="block text-gray-600 mt-1">Occupation: ${person.occupation || 'N/A'}</span>
+        `;
+        
+        document.getElementById('detail-contact').innerHTML = `
+          <span class="block text-gray-800"><i class="fa-solid fa-phone text-[10px] mr-1"></i>${person.contact || 'N/A'}</span>
+          <span class="block text-gray-800 mt-1"><i class="fa-solid fa-envelope text-[10px] mr-1"></i>${person.email || 'N/A'}</span>
+        `;
+        
+        document.getElementById('detail-note').value = person.notes || '';
+        document.getElementById('detail-action-type').value = 'Note Update';
+        document.getElementById('detail-modal').classList.remove('hidden');
+      }
+
+      function showAddPersonModal() {
+        document.getElementById('comm-add-firstname').value = ''; document.getElementById('comm-add-lastname').value = '';
+        document.getElementById('comm-add-housenum').value = ''; document.getElementById('comm-add-street').value = '';
+        document.getElementById('comm-add-phone').value = ''; document.getElementById('comm-add-email').value = '';
+        document.getElementById('comm-add-occupation').value = ''; document.getElementById('comm-add-notes').value = '';
+        document.getElementById('add-modal').classList.remove('hidden');
+      }
+
+      function closeModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+
+      function submitCommunityNoteOrAction() {
+        const payload = {
+          actionType: document.getElementById('detail-action-type').value, communityRow: currentCommunityPerson.id,
+          area: currentCommunityPerson.area, fullName: currentCommunityPerson.fullName, houseNum: currentCommunityPerson.houseNum,
+          street: currentCommunityPerson.street, phone: currentCommunityPerson.contact, type: currentCommunityPerson.status,
+          status: currentCommunityPerson.paymentStatus, notes: document.getElementById('detail-note').value.trim(),
+          occupation: currentCommunityPerson.occupation, email: currentCommunityPerson.email
+        };
+        google.script.run.withSuccessHandler(() => { alert("Action submitted successfully for Admin review."); closeModal('detail-modal'); loadCommunityData(); }).submitCommunityUpdate(payload);
+      }
+
+      function submitNewResidentRequest() {
+        const payload = {
+          actionType: 'New Resident Sign-up', firstName: document.getElementById('comm-add-firstname').value.trim(),
+          lastName: document.getElementById('comm-add-lastname').value.trim(), fullName: document.getElementById('comm-add-firstname').value.trim() + ' ' + document.getElementById('comm-add-lastname').value.trim(),
+          houseNum: document.getElementById('comm-add-housenum').value.trim(), street: document.getElementById('comm-add-street').value.trim(),
+          phone: document.getElementById('comm-add-phone').value.trim(), email: document.getElementById('comm-add-email').value.trim(),
+          occupation: document.getElementById('comm-add-occupation').value.trim(), type: document.getElementById('comm-add-type').value,
+          status: 'Unpaid', area: document.getElementById('comm-add-area').value, notes: document.getElementById('comm-add-notes').value.trim()
+        };
+        if (!payload.firstName || !payload.street) return alert("First Name and Street are required.");
+        google.script.run.withSuccessHandler(() => { alert("New resident sign-up submitted to Admin review queue."); closeModal('add-modal'); loadCommunityData(); }).submitCommunityUpdate(payload);
+      }
+    </script>
+</body>
+</html>
