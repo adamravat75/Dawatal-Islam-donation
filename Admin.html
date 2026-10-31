@@ -506,7 +506,7 @@
         </div>
     </div>
 
-    <!-- Frontend Script with Protected Safety Net -->
+    <!-- Frontend Script -->
     <script>
         let members = [];
         let donations = [];
@@ -596,11 +596,34 @@
                         <span class="text-xs font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded">${p.ActionType}</span>
                         <span class="text-xs text-gray-500">${p.Timestamp ? new Date(p.Timestamp).toLocaleString() : ''}</span>
                     </div>
-                    <div class="grid grid-cols-4 gap-3 text-xs">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
                         <div><label class="block text-gray-500 font-bold">Full Name</label><input type="text" id="p-name-${idx}" value="${p['Full Name'] || ''}" class="w-full border p-1.5 rounded bg-white font-bold"></div>
-                        <div><label class="block text-gray-500 font-bold">House No & Street</label><div class="flex space-x-1"><input type="text" id="p-house-${idx}" value="${p['House Number'] || ''}" class="w-1/3 border p-1.5 rounded bg-white"><input type="text" id="p-street-${idx}" value="${p['Street'] || ''}" class="w-2/3 border p-1.5 rounded bg-white"></div></div>
-                        <div><label class="block text-gray-500 font-bold">Phone & Email</label><input type="text" id="p-phone-${idx}" value="${p['Phone'] || ''}" class="w-full border p-1.5 rounded bg-white mb-1"><input type="text" id="p-email-${idx}" value="${p['Email'] || ''}" class="w-full border p-1.5 rounded bg-white"></div>
-                        <div><label class="block text-gray-500 font-bold">Type / Status / Occupation</label><div class="flex space-x-1"><input type="text" id="p-type-${idx}" value="${p['Type'] || ''}" class="w-1/2 border p-1.5 rounded bg-white"><input type="text" id="p-status-${idx}" value="${p['Status'] || ''}" class="w-1/2 border p-1.5 rounded bg-white"></div><input type="text" id="p-occ-${idx}" value="${p['Occupation'] || ''}" class="w-full border p-1.5 rounded bg-white mt-1" placeholder="Occupation"></div>
+                        <div><label class="block text-gray-500 font-bold">House No & Street</label><div class="flex space-x-1"><input type="text" id="p-house-${idx}" value="${p['House Number'] || ''}" class="w-1/3 border p-1.5 rounded bg-white" placeholder="House"><input type="text" id="p-street-${idx}" value="${p['Street'] || ''}" class="w-2/3 border p-1.5 rounded bg-white" placeholder="Street"></div></div>
+                        <div><label class="block text-gray-500 font-bold">Phone & Email</label><input type="text" id="p-phone-${idx}" value="${p['Phone'] || ''}" class="w-full border p-1.5 rounded bg-white mb-1" placeholder="Phone"><input type="text" id="p-email-${idx}" value="${p['Email'] || ''}" class="w-full border p-1.5 rounded bg-white" placeholder="Email"></div>
+                        <div>
+                            <label class="block text-gray-500 font-bold">Type & Area</label>
+                            <div class="flex space-x-1 mb-1">
+                                <select id="p-type-${idx}" class="w-1/2 border p-1.5 rounded bg-white text-xs font-semibold">
+                                    <option value="Member" ${p['Type'] === 'Member' ? 'selected' : ''}>Member</option>
+                                    <option value="Non-Member" ${p['Type'] === 'Non-Member' ? 'selected' : ''}>Non-Member</option>
+                                </select>
+                                <select id="p-area-${idx}" class="w-1/2 border p-1.5 rounded bg-white text-xs font-semibold">
+                                    <option value="Area 1" ${p['Area'] === 'Area 1' ? 'selected' : ''}>Area 1</option>
+                                    <option value="Area 2" ${p['Area'] === 'Area 2' ? 'selected' : ''}>Area 2</option>
+                                    <option value="Area 3" ${p['Area'] === 'Area 3' ? 'selected' : ''}>Area 3</option>
+                                    <option value="Area 4" ${p['Area'] === 'Area 4' ? 'selected' : ''}>Area 4</option>
+                                    <option value="Area 5" ${p['Area'] === 'Area 5' ? 'selected' : ''}>Area 5</option>
+                                    <option value="Area 6" ${p['Area'] === 'Area 6' ? 'selected' : ''}>Area 6</option>
+                                    <option value="Area 7" ${p['Area'] === 'Area 7' ? 'selected' : ''}>Area 7</option>
+                                    <option value="Area 8" ${p['Area'] === 'Area 8' ? 'selected' : ''}>Area 8</option>
+                                    <option value="Unallocated" ${!p['Area'] || p['Area'] === 'Unallocated' ? 'selected' : ''}>Unallocated</option>
+                                </select>
+                            </div>
+                            <div class="flex space-x-1">
+                                <input type="text" id="p-status-${idx}" value="${p['Status'] || 'Unpaid'}" class="w-1/2 border p-1.5 rounded bg-white" placeholder="Status">
+                                <input type="text" id="p-occ-${idx}" value="${p['Occupation'] || ''}" class="w-1/2 border p-1.5 rounded bg-white" placeholder="Occupation">
+                            </div>
+                        </div>
                     </div>
                     <div><label class="block text-xs text-gray-500 font-bold">Notes / Reason</label><textarea id="p-notes-${idx}" class="w-full border p-2 rounded bg-white text-xs" rows="2">${p['Notes'] || ''}</textarea></div>
                     <div class="flex justify-end space-x-2 pt-1">
@@ -619,6 +642,7 @@
                 phone: document.getElementById(`p-phone-${idx}`).value,
                 email: document.getElementById(`p-email-${idx}`).value,
                 type: document.getElementById(`p-type-${idx}`).value,
+                area: document.getElementById(`p-area-${idx}`).value,
                 status: document.getElementById(`p-status-${idx}`).value,
                 occupation: document.getElementById(`p-occ-${idx}`).value,
                 notes: document.getElementById(`p-notes-${idx}`).value

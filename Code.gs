@@ -334,39 +334,101 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
   if (decision === 'approve') {
     var pData = pendingSheet.getRange(pendingRowIndex, 1, 1, 13).getValues()[0];
     var actionType = pData[0];
-    var area = pData[2];
+    var originalArea = pData[2];
     var communityRow = pData[1];
 
-    if (actionType === 'New Resident Sign-up') {
+    var finalArea = updatedData.area || originalArea || 'Unallocated';
+    var fullName = updatedData.fullName || '';
+    var parts = fullName.split(/\s+/);
+    var firstName = parts[0] || '';
+    var surname = parts.slice(1).join(' ') || '';
+    var houseNum = updatedData.houseNum || '';
+    var street = updatedData.street || '';
+    var phone = updatedData.phone || '';
+    var email = updatedData.email || '';
+    var occupation = updatedData.occupation || '';
+    var type = updatedData.type || 'Member';
+    var status = updatedData.status || 'Unpaid';
+    var notes = updatedData.notes || '';
+
+    var isMember = type.toLowerCase().includes('member') && !type.toLowerCase().includes('non');
+
+    if (actionType === 'New Resident Sign-up' || actionType === 'Add' || !communityRow) {
+      // 1. Update All Community sheet with correct column mapping
       var targetSheet = ss.getSheetByName('All Community') || ss.insertSheet('All Community');
       targetSheet.appendRow([
-        updatedData.fullName.split(' ')[0] || '',
-        updatedData.fullName.split(' ').slice(1).join(' ') || '',
-        updatedData.houseNum || '',
-        updatedData.street || '',
-        updatedData.phone || '',
-        updatedData.email || '',
-        updatedData.occupation || '',
-        updatedData.type || 'Member',
-        updatedData.status || 'Unpaid',
-        updatedData.notes || ''
+        firstName,
+        surname,
+        houseNum,
+        street,
+        phone,
+        email,
+        occupation,
+        type,
+        status,
+        notes,
+        finalArea
       ]);
+
+      // 2. Conditionally update People worksheet ONLY if Type is Member
+      if (isMember) {
+        var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
+        var nextId = peopleSheet.getLastRow();
+        peopleSheet.appendRow([
+          nextId,
+          fullName,
+          houseNum,
+          street,
+          '', // Postcode
+          phone,
+          email,
+          notes
+        ]);
+      }
     } else if (communityRow) {
       var targetSheet = ss.getSheetByName('All Community');
       if (targetSheet) {
         if (actionType === 'Delete') {
           targetSheet.deleteRow(parseInt(communityRow));
         } else {
-          targetSheet.getRange(parseInt(communityRow), 1).setValue(updatedData.fullName.split(' ')[0] || '');
-          targetSheet.getRange(parseInt(communityRow), 2).setValue(updatedData.fullName.split(' ').slice(1).join(' ') || '');
-          targetSheet.getRange(parseInt(communityRow), 3).setValue(updatedData.houseNum || '');
-          targetSheet.getRange(parseInt(communityRow), 4).setValue(updatedData.street || '');
-          targetSheet.getRange(parseInt(communityRow), 5).setValue(updatedData.phone || '');
-          targetSheet.getRange(parseInt(communityRow), 6).setValue(updatedData.email || '');
-          targetSheet.getRange(parseInt(communityRow), 7).setValue(updatedData.occupation || '');
-          targetSheet.getRange(parseInt(communityRow), 8).setValue(updatedData.type || '');
-          targetSheet.getRange(parseInt(communityRow), 9).setValue(updatedData.status || '');
-          targetSheet.getRange(parseInt(communityRow), 10).setValue(updatedData.notes || '');
+          var rIdx = parseInt(communityRow);
+          targetSheet.getRange(rIdx, 1).setValue(firstName);
+          targetSheet.getRange(rIdx, 2).setValue(surname);
+          targetSheet.getRange(rIdx, 3).setValue(houseNum);
+          targetSheet.getRange(rIdx, 4).setValue(street);
+          targetSheet.getRange(rIdx, 5).setValue(phone);
+          targetSheet.getRange(rIdx, 6).setValue(email);
+          targetSheet.getRange(rIdx, 7).setValue(occupation);
+          targetSheet.getRange(rIdx, 8).setValue(type);
+          targetSheet.getRange(rIdx, 9).setValue(status);
+          targetSheet.getRange(rIdx, 10).setValue(notes);
+          if (targetSheet.getLastColumn() >= 11) {
+            targetSheet.getRange(rIdx, 11).setValue(finalArea);
+          }
+
+          var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
+          var peopleData = peopleSheet.getDataRange().getValues();
+          var foundInPeopleRow = -1;
+          for (var r = 1; r < peopleData.length; r++) {
+            var pName = peopleData[r][1] ? peopleData[r][1].toString().trim().toLowerCase() : '';
+            if (pName === fullName.toLowerCase()) {
+              foundInPeopleRow = r + 1;
+              break;
+            }
+          }
+
+          if (isMember) {
+            if (foundInPeopleRow !== -1) {
+              peopleSheet.getRange(foundInPeopleRow, 3).setValue(houseNum);
+              peopleSheet.getRange(foundInPeopleRow, 4).setValue(street);
+              peopleSheet.getRange(foundInPeopleRow, 6).setValue(phone);
+              peopleSheet.getRange(foundInPeopleRow, 7).setValue(email);
+              peopleSheet.getRange(foundInPeopleRow, 8).setValue(notes);
+            } else {
+              var nextId = peopleSheet.getLastRow();
+              peopleSheet.appendRow([nextId, fullName, houseNum, street, '', phone, email, notes]);
+            }
+          }
         }
       }
     }
