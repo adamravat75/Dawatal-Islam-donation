@@ -232,7 +232,8 @@ function getFilteredCommunityData(selectedAreas, statusFilter) {
     if (data.length <= 1) return {};
 
     var headers = data[0];
-    var col = { fullName: 1, houseNo: 2, street: 3, contact: 4, email: 5, occupation: 6, type: 7, status: 8, notes: 9, area: 0 };
+    // Exact column mapping matching A through K layout
+    var col = { area: 0, fullName: 1, houseNo: 2, street: 3, contact: 4, type: 5, status: 6, notes: 7, date: 8, occupation: 9, email: 10 };
 
     for (var c = 0; c < headers.length; c++) {
       var h = headers[c] ? headers[c].toString().trim().toLowerCase() : '';
@@ -245,6 +246,7 @@ function getFilteredCommunityData(selectedAreas, statusFilter) {
       else if (h.includes('type') || h.includes('member/non')) col.type = c;
       else if (h.includes('status') || h.includes('payment')) col.status = c;
       else if (h.includes('note')) col.notes = c;
+      else if (h.includes('date') || h.includes('timestamp')) col.date = c;
       else if (h.includes('area')) col.area = c;
     }
 
@@ -347,13 +349,14 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
     var type = updatedData.type || 'Member';
     var status = updatedData.status || '';
     var notes = updatedData.notes || '';
+    var currentDate = new Date();
 
     var isMember = type.toLowerCase().includes('member') && !type.toLowerCase().includes('non');
     if (status === 'N/A' || !isMember) status = 'N/A';
 
     if (actionType === 'New Resident Sign-up' || actionType === 'Add' || !communityRow) {
-      // 1. Update All Community sheet with correct strict column mapping:
-      // Col A: Area | Col B: Full Name | Col C: House No | Col D: Street | Col E: Phone | Col F: Email | Col G: Occupation | Col H: Type | Col I: Status | Col J: Notes
+      // 1. Update All Community sheet with exact requested column order A through K:
+      // Col A: Area | Col B: Full Name | Col C: House No | Col D: Street | Col E: Phone | Col F: Type | Col G: Status | Col H: Notes | Col I: Date | Col J: Occupation | Col K: Email
       var targetSheet = ss.getSheetByName('All Community') || ss.insertSheet('All Community');
       targetSheet.appendRow([
         finalArea,    // Col A (1)
@@ -361,11 +364,12 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
         houseNum,     // Col C (3)
         street,       // Col D (4)
         phone,        // Col E (5)
-        email,        // Col F (6)
-        occupation,   // Col G (7)
-        type,         // Col H (8)
-        status,       // Col I (9)
-        notes         // Col J (10)
+        type,         // Col F (6)
+        status,       // Col G (7)
+        notes,        // Col H (8)
+        currentDate,  // Col I (9)
+        occupation,   // Col J (10)
+        email         // Col K (11)
       ]);
 
       // 2. Conditionally update People worksheet ONLY if Type is Member
@@ -390,16 +394,18 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
           targetSheet.deleteRow(parseInt(communityRow));
         } else {
           var rIdx = parseInt(communityRow);
+          // Update exact columns A through K
           targetSheet.getRange(rIdx, 1).setValue(finalArea);
           targetSheet.getRange(rIdx, 2).setValue(fullName);
           targetSheet.getRange(rIdx, 3).setValue(houseNum);
           targetSheet.getRange(rIdx, 4).setValue(street);
           targetSheet.getRange(rIdx, 5).setValue(phone);
-          targetSheet.getRange(rIdx, 6).setValue(email);
-          targetSheet.getRange(rIdx, 7).setValue(occupation);
-          targetSheet.getRange(rIdx, 8).setValue(type);
-          targetSheet.getRange(rIdx, 9).setValue(status);
-          targetSheet.getRange(rIdx, 10).setValue(notes);
+          targetSheet.getRange(rIdx, 6).setValue(type);
+          targetSheet.getRange(rIdx, 7).setValue(status);
+          targetSheet.getRange(rIdx, 8).setValue(notes);
+          targetSheet.getRange(rIdx, 9).setValue(currentDate);
+          targetSheet.getRange(rIdx, 10).setValue(occupation);
+          targetSheet.getRange(rIdx, 11).setValue(email);
 
           var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
           var peopleData = peopleSheet.getDataRange().getValues();
