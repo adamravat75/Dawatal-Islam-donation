@@ -30,6 +30,9 @@ function getDatabase() {
       return { success: false, error: "Active spreadsheet not found.", members: [], donations: [], pendingUpdates: [] };
     }
     
+    // Check and perform Year-End reset check if needed
+    checkAndResetForNewYear(ss);
+    
     // 1. SAFE PEOPLE FETCH
     var members = [];
     try {
@@ -143,6 +146,50 @@ function getDatabase() {
   }
 }
 
+// Helper to check year-end reset: resets Members to Unpaid, keeps Non-Members as N/A
+function checkAndResetForNewYear(ss) {
+  var props = PropertiesService.getDocumentProperties();
+  var currentYear = new Date().getFullYear().toString();
+  var lastCheckedYear = props.getProperty('LAST_ACTIVE_YEAR');
+
+  if (lastCheckedYear && lastCheckedYear !== currentYear) {
+    try {
+      // 1. Reset People sheet membership statuses for Members
+      var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people');
+      if (peopleSheet && peopleSheet.getLastRow() > 1) {
+        var pData = peopleSheet.getDataRange().getValues();
+        var pHeaders = pData[0];
+        for (var c = 0; c < pHeaders.length; c++) {
+          var h = pHeaders[c] ? pHeaders[c].toString().toLowerCase() : '';
+          if (h.includes('membership') || h.includes(lastCheckedYear)) {
+            peopleSheet.getRange(1, c + 1).setValue('Membership ' + currentYear);
+            for (var r = 1; r < pData.length; r++) {
+              peopleSheet.getRange(r + 1, c + 1).setValue('Unpaid');
+            }
+          }
+        }
+      }
+
+      // 2. Reset All Community sheet: Members become 'Unpaid', Non-Members remain 'N/A'
+      var commSheet = ss.getSheetByName('All Community');
+      if (commSheet && commSheet.getLastRow() > 1) {
+        var cData = commSheet.getDataRange().getValues();
+        for (var r = 1; r < cData.length; r++) {
+          var typeVal = cData[r][5] ? cData[r][5].toString().toLowerCase() : ''; // Col F: Type
+          if (typeVal.includes('member') && !typeVal.includes('non')) {
+            commSheet.getRange(r + 1, 7).setValue('Unpaid'); // Col G: Status -> Unpaid for Members
+          } else {
+            commSheet.getRange(r + 1, 7).setValue('N/A'); // Col G: Status -> N/A for Non-Members
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Year reset error: " + e.toString());
+    }
+  }
+  props.setProperty('LAST_ACTIVE_YEAR', currentYear);
+}
+
 function addDonation(donation) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var donSheet = ss.getSheetByName('Donations') || ss.getSheetByName('Donations Log');
@@ -178,6 +225,8 @@ function deleteDonationByRow(rowIndex) {
 
 function addMember(member) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  // 1. Add to People sheet
   var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
   var nextId = peopleSheet.getLastRow();
   var fullName = (member['First Name'] + ' ' + (member['Surname'] || '')).trim();
@@ -192,6 +241,26 @@ function addMember(member) {
     member['Email Address'] || '',
     member['Notes'] || ''
   ]);
+
+  // 2. Automatically sync and add to All Community sheet with exact columns A through K
+  var isMemberType = member['Type'] ? member['Type'].toString().toLowerCase().includes('member') && !member['Type'].toString().toLowerCase().includes('non') : true;
+  var initialStatus = isMemberType ? 'Unpaid' : 'N/A';
+
+  var commSheet = ss.getSheetByName('All Community') || ss.insertSheet('All Community');
+  commSheet.appendRow([
+    member['Area'] || 'Unallocated',                // Col A: Area
+    fullName,                                       // Col B: Full Name
+    member['House Number'] || '',                   // Col C: House No
+    member['Address'] || '',                        // Col D: Street
+    member['Contact Number'] || '',                 // Col E: Phone
+    member['Type'] || 'Member',                     // Col F: Type (Member / Non-Member)
+    initialStatus,                                  // Col G: Status (Unpaid or N/A)
+    member['Notes'] || '',                          // Col H: Notes
+    new Date(),                                     // Col I: Timestamp / Date
+    member['Occupation'] || '',                     // Col J: Occupation
+    member['Email Address'] || ''                   // Col K: Email Address
+  ]);
+
   return 'Success';
 }
 
@@ -211,6 +280,38 @@ function updateMember(member) {
   if (member['Notes'] !== undefined) {
     peopleSheet.getRange(rowIndex, 8).setValue(member['Notes']);
   }
+
+  // Check if membership fee status was updated (e.g., Paid) and sync to All Community
+  var currentYear = new Date().getFullYear();
+  var pHeaders = peopleSheet.getRange(1, 1, 1, peopleSheet.getLastColumn()).getValues()[0];
+  var statusToSync = '';
+  for (var c = 0; c < pHeaders.length; c++) {
+    var h = pHeaders[c] ? pHeaders[c].toString().toLowerCase() : '';
+    if (h.includes('membership') || h.includes(currentYear)) {
+      statusToSync = peopleSheet.getRange(rowIndex, c + 1).getValue().toString();
+    }
+  }
+
+  if (statusToSync) {
+    var commSheet = ss.getSheetByName('All Community');
+    if (commSheet && commSheet.getLastRow() > 1) {
+      var cData = commSheet.getDataRange().getValues();
+      for (var r = 1; r < cData.length; r++) {
+        var cName = cData[r][1] ? cData[r][1].toString().trim().toLowerCase() : '';
+        if (cName === fullName.toLowerCase()) {
+          var typeVal = cData[r][5] ? cData[r][5].toString().toLowerCase() : '';
+          // Only update status if they are a member; keep N/A for non-members
+          if (typeVal.includes('member') && !typeVal.includes('non')) {
+            commSheet.getRange(r + 1, 7).setValue(statusToSync); // Col G: Status
+          } else {
+            commSheet.getRange(r + 1, 7).setValue('N/A');
+          }
+          break;
+        }
+      }
+    }
+  }
+
   return 'Success';
 }
 
@@ -232,7 +333,6 @@ function getFilteredCommunityData(selectedAreas, statusFilter) {
     if (data.length <= 1) return {};
 
     var headers = data[0];
-    // Exact column mapping matching A through K layout
     var col = { area: 0, fullName: 1, houseNo: 2, street: 3, contact: 4, type: 5, status: 6, notes: 7, date: 8, occupation: 9, email: 10 };
 
     for (var c = 0; c < headers.length; c++) {
@@ -355,8 +455,6 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
     if (status === 'N/A' || !isMember) status = 'N/A';
 
     if (actionType === 'New Resident Sign-up' || actionType === 'Add' || !communityRow) {
-      // 1. Update All Community sheet with exact requested column order A through K:
-      // Col A: Area | Col B: Full Name | Col C: House No | Col D: Street | Col E: Phone | Col F: Type | Col G: Status | Col H: Notes | Col I: Date | Col J: Occupation | Col K: Email
       var targetSheet = ss.getSheetByName('All Community') || ss.insertSheet('All Community');
       targetSheet.appendRow([
         finalArea,    // Col A (1)
@@ -372,7 +470,6 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
         email         // Col K (11)
       ]);
 
-      // 2. Conditionally update People worksheet ONLY if Type is Member
       if (isMember) {
         var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
         var nextId = peopleSheet.getLastRow();
@@ -381,7 +478,7 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
           fullName,
           houseNum,
           street,
-          '', // Postcode
+          '', 
           phone,
           email,
           notes
@@ -394,7 +491,6 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
           targetSheet.deleteRow(parseInt(communityRow));
         } else {
           var rIdx = parseInt(communityRow);
-          // Update exact columns A through K
           targetSheet.getRange(rIdx, 1).setValue(finalArea);
           targetSheet.getRange(rIdx, 2).setValue(fullName);
           targetSheet.getRange(rIdx, 3).setValue(houseNum);
