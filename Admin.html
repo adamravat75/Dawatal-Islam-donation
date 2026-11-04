@@ -57,7 +57,7 @@
     <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-20">
         <div class="max-w-7xl mx-auto px-4 flex space-x-8 overflow-x-auto">
             <button onclick="switchTab('tab-profile')" id="btn-tab-profile" class="tab-btn py-4 px-2 border-b-2 border-emerald-700 theme-green-text font-bold text-sm flex items-center space-x-2 whitespace-nowrap">
-                <i class="fa-solid fa-user-magnifying-glass"></i><span>1. Member & Donor Search</span>
+                <i class="fa-solid fa-user-magnifying-glass"></i><span>1. Member & Resident Search</span>
             </button>
             <button onclick="switchTab('tab-fees')" id="btn-tab-fees" class="tab-btn py-4 px-2 border-b-2 border-transparent text-gray-500 hover:text-gray-700 font-bold text-sm flex items-center space-x-2 whitespace-nowrap">
                 <i class="fa-solid fa-id-card"></i><span>2. Member Fee Status & Unpaid List</span>
@@ -75,12 +75,12 @@
     <!-- Main Container -->
     <main class="max-w-7xl mx-auto px-4 py-6">
 
-        <!-- TAB 1: MEMBER & DONOR SEARCH -->
+        <!-- TAB 1: MEMBER & RESIDENT SEARCH -->
         <div id="tab-profile" class="tab-content active space-y-6">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-5">
                 <div>
-                    <h2 class="text-xl font-bold text-gray-800">Member & Donor Actions</h2>
-                    <p class="text-sm text-gray-500">Log general donations, add new members, or search existing records below.</p>
+                    <h2 class="text-xl font-bold text-gray-800">Member & Resident Directory Actions</h2>
+                    <p class="text-sm text-gray-500">Log general donations, add new community members/residents, or search all records below.</p>
                 </div>
 
                 <div class="flex flex-wrap gap-3">
@@ -88,15 +88,15 @@
                         <i class="fa-solid fa-hand-holding-dollar"></i><span>Log Random / General Donation</span>
                     </button>
                     <button onclick="openAddMemberModal()" class="theme-green hover:opacity-90 text-white px-5 py-3 rounded-lg text-sm font-bold transition flex items-center space-x-2 shadow">
-                        <i class="fa-solid fa-user-plus"></i><span>Add New Member</span>
+                        <i class="fa-solid fa-user-plus"></i><span>Add New Member / Resident</span>
                     </button>
                 </div>
 
                 <hr class="border-gray-100">
 
                 <div class="space-y-2 relative">
-                    <label class="block text-sm font-bold text-gray-700">Search Member or Donor</label>
-                    <p class="text-xs text-gray-500">Type first name, surname, or postcode to view history or log member fee donations.</p>
+                    <label class="block text-sm font-bold text-gray-700">Search Resident, Member or Donor</label>
+                    <p class="text-xs text-gray-500">Type first name, surname, or postcode to view details, update info, or log fee donations.</p>
                     <div class="relative">
                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                             <i class="fa-solid fa-magnifying-glass"></i>
@@ -112,7 +112,10 @@
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-4 mb-4 gap-4">
                         <div>
-                            <span id="profileMemberId" class="bg-emerald-100 text-emerald-900 text-xs font-bold px-2.5 py-0.5 rounded">ID: 1</span>
+                            <div class="flex items-center space-x-2">
+                                <span id="profileMemberId" class="bg-emerald-100 text-emerald-900 text-xs font-bold px-2.5 py-0.5 rounded">ID: 1</span>
+                                <span id="profileContactTypeBadge" class="bg-blue-100 text-blue-900 text-xs font-bold px-2.5 py-0.5 rounded">Member</span>
+                            </div>
                             <h3 id="profileName" class="text-2xl font-bold text-gray-900 mt-1">-</h3>
                             <p id="profileAddress" class="text-sm text-gray-600">-</p>
                         </div>
@@ -121,9 +124,9 @@
                                 <i class="fa-solid fa-user-pen"></i><span>Edit Details</span>
                             </button>
                             <button onclick="deleteCurrentMember()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg font-bold text-xs shadow transition flex items-center space-x-1.5">
-                                <i class="fa-solid fa-user-xmark"></i><span>Delete Member</span>
+                                <i class="fa-solid fa-user-xmark"></i><span>Delete Record</span>
                             </button>
-                            <button onclick="openDonateModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-xs shadow transition flex items-center space-x-1.5">
+                            <button id="profileLogFeeBtn" onclick="openDonateModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-bold text-xs shadow transition flex items-center space-x-1.5">
                                 <i class="fa-solid fa-hand-holding-dollar"></i><span>Log Member Fee</span>
                             </button>
                         </div>
@@ -146,7 +149,7 @@
 
                     <!-- Member Notes Box -->
                     <div class="mb-6 bg-amber-50/50 p-4 rounded-lg border border-amber-200">
-                        <span class="block text-xs font-bold text-amber-900 uppercase mb-1"><i class="fa-solid fa-note-sticky mr-1.5"></i>Member Notes</span>
+                        <span class="block text-xs font-bold text-amber-900 uppercase mb-1"><i class="fa-solid fa-note-sticky mr-1.5"></i>Resident / Member Notes</span>
                         <p id="profileNotesDisplay" class="text-sm text-gray-700 whitespace-pre-line">-</p>
                     </div>
 
@@ -243,7 +246,7 @@
                             <option value="">All Donation Types</option>
                             <option value="Full Member Fee + IMWS">Full Member Fee + IMWS</option>
                             <option value="Member Fee (Only)">Member Fee (Only)</option>
-                            <option value="Student Member Fee (under 18 years) + IMWS">Student Member Fee + IMWS</option>
+                            <option value="Student Member Fee (under 18 years) + IMWS">Student Member Fee (under 18 years) + IMWS</option>
                             <option value="Student Member Fee (under 18 years) Only">Student Member Fee Only</option>
                             <option value="Lillah">Lillah</option>
                             <option value="Utility">Utility</option>
@@ -405,7 +408,7 @@
     <div id="addMemberModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="text-lg font-bold text-gray-900">Add New Member</h3>
+                <h3 class="text-lg font-bold text-gray-900">Add New Resident / Member</h3>
                 <button onclick="closeAddMemberModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <form id="addMemberForm" onsubmit="submitNewMember(event)" class="space-y-4">
@@ -435,11 +438,34 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Contact Type</label>
+                        <select id="newContactType" class="w-full px-3 py-2 border rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-900">
+                            <option value="Member">Member</option>
+                            <option value="Non-Member">Non-Member</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Area</label>
+                        <select id="newArea" class="w-full px-3 py-2 border rounded-lg text-sm font-semibold">
+                            <option value="Area 1">Area 1</option>
+                            <option value="Area 2">Area 2</option>
+                            <option value="Area 3">Area 3</option>
+                            <option value="Area 4">Area 4</option>
+                            <option value="Area 5">Area 5</option>
+                            <option value="Area 6">Area 6</option>
+                            <option value="Area 7">Area 7</option>
+                            <option value="Area 8">Area 8</option>
+                            <option value="Unallocated">Unallocated</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Contact Number</label>
                         <input type="text" id="newPhone" placeholder="e.g. 07123456789" class="w-full px-3 py-2 border rounded-lg text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address (Optional)</label>
                         <input type="email" id="newEmail" placeholder="e.g. name@email.com" class="w-full px-3 py-2 border rounded-lg text-sm">
                     </div>
                 </div>
@@ -449,7 +475,7 @@
                 </div>
                 <div class="flex justify-end space-x-3 pt-2">
                     <button type="button" onclick="closeAddMemberModal()" class="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
-                    <button type="submit" id="addMemberBtn" class="px-5 py-2 theme-green text-white rounded-lg text-sm font-bold hover:opacity-90 shadow">Save Member</button>
+                    <button type="submit" id="addMemberBtn" class="px-5 py-2 theme-green text-white rounded-lg text-sm font-bold hover:opacity-90 shadow">Save Resident</button>
                 </div>
             </form>
         </div>
@@ -459,7 +485,7 @@
     <div id="editMemberModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 space-y-4">
             <div class="flex justify-between items-center border-b pb-3">
-                <h3 class="text-lg font-bold text-gray-900">Edit Member Details</h3>
+                <h3 class="text-lg font-bold text-gray-900">Edit Member / Resident Details</h3>
                 <button onclick="closeEditMemberModal()" class="text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-xl"></i></button>
             </div>
             <form id="editMemberForm" onsubmit="submitEditMember(event)" class="space-y-4">
@@ -489,11 +515,34 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Contact Type</label>
+                        <select id="editContactType" class="w-full px-3 py-2 border rounded-lg text-sm font-semibold bg-emerald-50 text-emerald-900">
+                            <option value="Member">Member</option>
+                            <option value="Non-Member">Non-Member</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Area</label>
+                        <select id="editArea" class="w-full px-3 py-2 border rounded-lg text-sm font-semibold">
+                            <option value="Area 1">Area 1</option>
+                            <option value="Area 2">Area 2</option>
+                            <option value="Area 3">Area 3</option>
+                            <option value="Area 4">Area 4</option>
+                            <option value="Area 5">Area 5</option>
+                            <option value="Area 6">Area 6</option>
+                            <option value="Area 7">Area 7</option>
+                            <option value="Area 8">Area 8</option>
+                            <option value="Unallocated">Unallocated</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-xs font-semibold text-gray-700 mb-1">Contact Number</label>
                         <input type="text" id="editPhone" class="w-full px-3 py-2 border rounded-lg text-sm">
                     </div>
                     <div>
-                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Email Address (Optional)</label>
                         <input type="email" id="editEmail" class="w-full px-3 py-2 border rounded-lg text-sm">
                     </div>
                 </div>
@@ -503,7 +552,7 @@
                 </div>
                 <div class="flex justify-end space-x-3 pt-2">
                     <button type="button" onclick="closeEditMemberModal()" class="px-4 py-2 border rounded-lg text-sm font-semibold text-gray-600 hover:bg-gray-100">Cancel</button>
-                    <button type="submit" id="editMemberBtn" class="px-5 py-2 theme-green text-white rounded-lg text-sm font-bold hover:opacity-90 shadow">Update Member</button>
+                    <button type="submit" id="editMemberBtn" class="px-5 py-2 theme-green text-white rounded-lg text-sm font-bold hover:opacity-90 shadow">Update Record</button>
                 </div>
             </form>
         </div>
@@ -618,11 +667,12 @@
                             <input type="text" id="p-name-${idx}" value="${p['Full Name'] || ''}" class="w-full border p-1.5 rounded bg-white font-bold">
                         </div>
                         <div>
-                            <label class="block text-gray-500 font-bold mb-1">House No & Street Name</label>
-                            <div class="flex space-x-1">
+                            <label class="block text-gray-500 font-bold mb-1">House No, Street & Postcode</label>
+                            <div class="flex space-x-1 mb-1">
                                 <input type="text" id="p-house-${idx}" value="${p['House Number'] || ''}" class="w-1/3 border p-1.5 rounded bg-white" placeholder="House">
                                 <input type="text" id="p-street-${idx}" value="${p['Street'] || ''}" class="w-2/3 border p-1.5 rounded bg-white" placeholder="Street Name">
                             </div>
+                            <input type="text" id="p-postcode-${idx}" value="${p['Postcode'] || ''}" class="w-full border p-1.5 rounded bg-white" placeholder="Postcode">
                         </div>
                         <div>
                             <label class="block text-gray-500 font-bold mb-1">Phone & Email</label>
@@ -695,6 +745,7 @@
                 fullName: document.getElementById(`p-name-${idx}`).value,
                 houseNum: document.getElementById(`p-house-${idx}`).value,
                 street: document.getElementById(`p-street-${idx}`).value,
+                postcode: document.getElementById(`p-postcode-${idx}`).value,
                 phone: document.getElementById(`p-phone-${idx}`).value,
                 email: document.getElementById(`p-email-${idx}`).value,
                 type: document.getElementById(`p-type-${idx}`).value,
@@ -723,13 +774,13 @@
             ).slice(0, 15);
 
             if (filtered.length === 0) {
-                resultsBox.innerHTML = '<div class="p-3 text-sm text-gray-500">No members found matching query</div>';
+                resultsBox.innerHTML = '<div class="p-3 text-sm text-gray-500">No records found matching query</div>';
             } else {
                 resultsBox.innerHTML = filtered.map(m => `
-                    <div onclick="selectMember(${m.MemberID})" class="p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center">
+                    <div onclick="selectMember('${m.MemberID}')" class="p-3 hover:bg-emerald-50 cursor-pointer border-b last:border-b-0 flex justify-between items-center">
                         <div>
                             <span class="font-bold text-gray-900">${m['First Name']} ${m['Surname']}</span>
-                            <span class="text-xs text-gray-500 ml-2">ID: ${m.MemberID}</span>
+                            <span class="text-xs text-gray-500 ml-2">ID: ${m.MemberID} | Type: <b>${m['Contact Type'] || 'Member'}</b></span>
                             <div class="text-xs text-gray-600">${m['House Number'] || ''} ${m['Address'] || ''}, ${m['Postcode'] || ''}</div>
                         </div>
                         <span class="text-xs bg-emerald-100 text-emerald-900 font-bold px-2 py-1 rounded">Select</span>
@@ -740,16 +791,26 @@
         }
 
         function selectMember(memberId) {
-            currentSelectedMember = members.find(m => m.MemberID === memberId);
+            currentSelectedMember = members.find(m => String(m.MemberID) === String(memberId));
             if (!currentSelectedMember) return;
             document.getElementById('searchResults').classList.add('hidden');
             document.getElementById('memberSearchInput').value = `${currentSelectedMember['First Name']} ${currentSelectedMember['Surname']}`;
 
             const currentYear = new Date().getFullYear();
             const currentYearKey = 'Membership ' + currentYear;
-            const currentStatus = currentSelectedMember[currentYearKey] || 'Unpaid';
+            const currentStatus = currentSelectedMember['Contact Type'] === 'Non-Member' ? 'N/A' : (currentSelectedMember[currentYearKey] || 'Unpaid');
 
             document.getElementById('profileMemberId').innerText = 'ID: ' + currentSelectedMember.MemberID;
+            const typeBadge = document.getElementById('profileContactTypeBadge');
+            typeBadge.innerText = currentSelectedMember['Contact Type'] || 'Member';
+            if (currentSelectedMember['Contact Type'] === 'Non-Member') {
+                typeBadge.className = 'bg-amber-100 text-amber-900 text-xs font-bold px-2.5 py-0.5 rounded';
+                document.getElementById('profileLogFeeBtn').style.display = 'none';
+            } else {
+                typeBadge.className = 'bg-blue-100 text-blue-900 text-xs font-bold px-2.5 py-0.5 rounded';
+                document.getElementById('profileLogFeeBtn').style.display = 'flex';
+            }
+
             document.getElementById('profileName').innerText = `${currentSelectedMember['First Name']} ${currentSelectedMember['Surname']}`;
             document.getElementById('profileAddress').innerText = `${currentSelectedMember['House Number'] || ''} ${currentSelectedMember['Address'] || ''}, ${currentSelectedMember['Postcode'] || ''}`.trim();
             document.getElementById('profilePhone').innerText = currentSelectedMember['Contact Number'] || 'Not Provided';
@@ -780,11 +841,11 @@
                 const targetSurname = (currentSelectedMember['Surname'] || '').toLowerCase();
                 const dFirst = (d['First Name'] || '').toLowerCase();
                 const dSurname = (d['Surname'] || '').toLowerCase();
-                return (dFirst === targetFirst && dSurname === targetSurname) || String(d['First Name']) === String(memberId);
+                return (dFirst === targetFirst && dSurname === targetSurname);
             });
 
             if (memberDonations.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">No donation history found for this member.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">No donation history found for this record.</td></tr>';
                 return;
             }
 
@@ -890,17 +951,6 @@
                     street: m['Address'] || '',
                     postcode: m['Postcode'] || ''
                 });
-            });
-            donations.forEach(d => {
-                if (d['First Name'] || d['Surname']) {
-                    combinedPeople.push({
-                        firstName: d['First Name'] || '',
-                        surname: d['Surname'] || '',
-                        houseNo: d['House Number'] || '',
-                        street: d['Street'] || d['Address'] || '',
-                        postcode: d['Postcode'] || ''
-                    });
-                }
             });
 
             const matches = combinedPeople.filter(p => {
@@ -1039,19 +1089,21 @@
                 'Postcode': document.getElementById('newPostcode').value,
                 'Contact Number': document.getElementById('newPhone').value,
                 'Email Address': document.getElementById('newEmail').value,
+                'Type': document.getElementById('newContactType').value,
+                'Area': document.getElementById('newArea').value,
                 'Notes': document.getElementById('newNotes').value
             };
 
             google.script.run
                 .withSuccessHandler(function() {
-                    btn.innerText = 'Save Member';
+                    btn.innerText = 'Save Resident';
                     btn.disabled = false;
                     closeAddMemberModal();
                     loadData();
-                    alert('New member added successfully!');
+                    alert('New resident/member added successfully!');
                 })
                 .withFailureHandler(function(err) {
-                    btn.innerText = 'Save Member';
+                    btn.innerText = 'Save Resident';
                     btn.disabled = false;
                     alert('Error: ' + err.message);
                 })
@@ -1067,6 +1119,8 @@
             document.getElementById('editAddress').value = currentSelectedMember['Address'] || '';
             document.getElementById('editPhone').value = currentSelectedMember['Contact Number'] || '';
             document.getElementById('editEmail').value = currentSelectedMember['Email Address'] || '';
+            document.getElementById('editContactType').value = currentSelectedMember['Contact Type'] || 'Member';
+            document.getElementById('editArea').value = currentSelectedMember['Area'] || 'Unallocated';
             document.getElementById('editNotes').value = currentSelectedMember['Notes'] || '';
             document.getElementById('editMemberModal').classList.remove('hidden');
         }
@@ -1082,7 +1136,8 @@
             btn.disabled = true;
 
             const updatedMember = {
-                'RowIndex': currentSelectedMember.RowIndex,
+                'PeopleRowIndex': currentSelectedMember.PeopleRowIndex,
+                'CommunityRowIndex': currentSelectedMember.CommunityRowIndex,
                 'First Name': document.getElementById('editFirstName').value,
                 'Surname': document.getElementById('editSurname').value,
                 'House Number': document.getElementById('editHouseNo').value,
@@ -1090,19 +1145,21 @@
                 'Postcode': document.getElementById('editPostcode').value,
                 'Contact Number': document.getElementById('editPhone').value,
                 'Email Address': document.getElementById('editEmail').value,
+                'Type': document.getElementById('editContactType').value,
+                'Area': document.getElementById('editArea').value,
                 'Notes': document.getElementById('editNotes').value
             };
 
             google.script.run
                 .withSuccessHandler(function() {
-                    btn.innerText = 'Update Member';
+                    btn.innerText = 'Update Record';
                     btn.disabled = false;
                     closeEditMemberModal();
                     loadData();
-                    alert('Member details updated successfully!');
+                    alert('Record updated successfully!');
                 })
                 .withFailureHandler(function(err) {
-                    btn.innerText = 'Update Member';
+                    btn.innerText = 'Update Record';
                     btn.disabled = false;
                     alert('Error: ' + err.message);
                 })
@@ -1115,16 +1172,16 @@
 
             google.script.run
                 .withSuccessHandler(function() {
-                    alert('Member successfully deleted.');
+                    alert('Record successfully deleted.');
                     currentSelectedMember = null;
                     document.getElementById('memberProfileSection').classList.add('hidden');
                     document.getElementById('memberSearchInput').value = '';
                     loadData();
                 })
                 .withFailureHandler(function(err) {
-                    alert('Error deleting member: ' + err.message);
+                    alert('Error deleting record: ' + err.message);
                 })
-                .deleteMemberByRow(currentSelectedMember.RowIndex);
+                .deleteMemberByRow(currentSelectedMember.PeopleRowIndex || currentSelectedMember.CommunityRowIndex);
         }
 
         function getFilteredFeeMembers() {
@@ -1137,6 +1194,10 @@
                 const matchesSearch = fullName.includes(search) || 
                                     (m['Postcode'] && m['Postcode'].toLowerCase().includes(search));
                 if (!matchesSearch) return false;
+
+                // Only show members in fee status tracker
+                const isNonMember = (m['Contact Type'] || '').toLowerCase().includes('non');
+                if (isNonMember) return false;
 
                 const currentYearKey = 'Membership ' + currentYear;
                 const statusVal = m[currentYearKey] || 'Unpaid';
@@ -1196,7 +1257,7 @@
                         <td class="px-4 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-bold ${p1 ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-800'}">${val1}</span></td>
                         <td class="px-4 py-3 text-center"><span class="px-2 py-1 rounded text-xs font-extrabold ${p2 ? 'bg-emerald-100 text-emerald-900' : 'bg-red-100 text-red-800'}">${val2}</span></td>
                         <td class="px-4 py-3 text-center">
-                            <button onclick="selectMember(${m.MemberID}); switchTab('tab-profile')" class="theme-green text-white px-3 py-1 rounded text-xs font-bold shadow-sm hover:opacity-90">View / Donate</button>
+                            <button onclick="selectMember('${m.MemberID}'); switchTab('tab-profile')" class="theme-green text-white px-3 py-1 rounded text-xs font-bold shadow-sm hover:opacity-90">View / Donate</button>
                         </td>
                     </tr>
                 `;
