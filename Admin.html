@@ -803,12 +803,14 @@
             document.getElementById('profileMemberId').innerText = 'ID: ' + currentSelectedMember.MemberID;
             const typeBadge = document.getElementById('profileContactTypeBadge');
             typeBadge.innerText = currentSelectedMember['Contact Type'] || 'Member';
+            
+            const logFeeBtn = document.getElementById('profileLogFeeBtn');
             if (currentSelectedMember['Contact Type'] === 'Non-Member') {
                 typeBadge.className = 'bg-amber-100 text-amber-900 text-xs font-bold px-2.5 py-0.5 rounded';
-                document.getElementById('profileLogFeeBtn').style.display = 'none';
+                if (logFeeBtn) logFeeBtn.style.display = 'none';
             } else {
                 typeBadge.className = 'bg-blue-100 text-blue-900 text-xs font-bold px-2.5 py-0.5 rounded';
-                document.getElementById('profileLogFeeBtn').style.display = 'flex';
+                if (logFeeBtn) logFeeBtn.style.display = 'flex';
             }
 
             document.getElementById('profileName').innerText = `${currentSelectedMember['First Name']} ${currentSelectedMember['Surname']}`;
@@ -1181,7 +1183,7 @@
                 .withFailureHandler(function(err) {
                     alert('Error deleting record: ' + err.message);
                 })
-                .deleteMemberByRow(currentSelectedMember.PeopleRowIndex || currentSelectedMember.CommunityRowIndex);
+                .deleteMemberRecord(currentSelectedMember.PeopleRowIndex, currentSelectedMember.CommunityRowIndex, currentSelectedMember['Full Name']);
         }
 
         function getFilteredFeeMembers() {
@@ -1195,7 +1197,6 @@
                                     (m['Postcode'] && m['Postcode'].toLowerCase().includes(search));
                 if (!matchesSearch) return false;
 
-                // Only show members in fee status tracker
                 const isNonMember = (m['Contact Type'] || '').toLowerCase().includes('non');
                 if (isNonMember) return false;
 

@@ -48,7 +48,6 @@ function getDatabase() {
     
     checkAndResetForNewYear(ss);
     
-    // Map of all residents (combining People and All Community for unified search & editing)
     var masterDirectory = {};
 
     // 1. SAFE PEOPLE FETCH (Members with rolling fee statuses)
@@ -108,31 +107,46 @@ function getDatabase() {
       console.error("People read error: " + errP.toString());
     }
 
-    // 2. SAFE ALL COMMUNITY FETCH (Includes both Members and Non-Members with exact shifted columns)
+    // 2. SAFE ALL COMMUNITY FETCH (Dynamic header lookup)
     try {
       var commSheet = ss.getSheetByName('All Community') || ss.getSheetByName('All_Community');
       if (commSheet && commSheet.getLastRow() > 1) {
         var cData = commSheet.getDataRange().getValues();
-        // Columns: A=Area, B=Full Name, C=House No, D=Street, E=Postcode, F=Phone, G=Type, H=Status, I=Notes, J=Date, K=Occupation, L=Email
+        var cHeaders = cData[0];
+        var cCol = { area: 0, fullName: 1, houseNo: 2, street: 3, postcode: 4, phone: 5, type: 6, status: 7, notes: 8, occupation: 10, email: 11 };
+        
+        for (var c = 0; c < cHeaders.length; c++) {
+          var h = cHeaders[c] ? cHeaders[c].toString().trim().toLowerCase() : '';
+          if (h.includes('area')) cCol.area = c;
+          else if (h.includes('full name') || h === 'name' || h.includes('resident')) cCol.fullName = c;
+          else if (h.includes('house')) cCol.houseNo = c;
+          else if ((h.includes('street') || h.includes('address')) && !h.includes('email')) cCol.street = c;
+          else if (h.includes('postcode')) cCol.postcode = c;
+          else if (h.includes('phone') || h.includes('contact') || h.includes('mobile')) cCol.phone = c;
+          else if (h.includes('type') || h.includes('member/non')) cCol.type = c;
+          else if (h.includes('status') || h.includes('payment')) cCol.status = c;
+          else if (h.includes('note')) cCol.notes = c;
+          else if (h.includes('occupation')) cCol.occupation = c;
+          else if (h.includes('email')) cCol.email = c;
+        }
+
         for (var i = 1; i < cData.length; i++) {
           var row = cData[i];
-          var fullName = row[1] ? row[1].toString().trim() : '';
+          var fullName = row[cCol.fullName] !== undefined ? row[cCol.fullName].toString().trim() : '';
           if (!fullName) continue;
           
           var key = fullName.toLowerCase();
           var parts = fullName.split(/\s+/);
-          var typeVal = row[6] ? row[6].toString().trim() : 'Member';
+          var typeVal = row[cCol.type] !== undefined ? row[cCol.type].toString().trim() : 'Member';
           
           if (masterDirectory[key]) {
-            // Already in People sheet, enrich with community row index & extra fields
             masterDirectory[key]['CommunityRowIndex'] = i + 1;
-            masterDirectory[key]['Area'] = row[0] ? row[0].toString().trim() : '';
+            masterDirectory[key]['Area'] = row[cCol.area] !== undefined ? row[cCol.area].toString().trim() : '';
             masterDirectory[key]['Contact Type'] = typeVal;
-            masterDirectory[key]['Occupation'] = row[10] ? row[10].toString().trim() : '';
-            if (!masterDirectory[key]['Postcode'] && row[4]) masterDirectory[key]['Postcode'] = row[4].toString().trim();
-            if (!masterDirectory[key]['Email Address'] && row[11]) masterDirectory[key]['Email Address'] = row[11].toString().trim();
+            masterDirectory[key]['Occupation'] = row[cCol.occupation] !== undefined ? row[cCol.occupation].toString().trim() : '';
+            if (!masterDirectory[key]['Postcode'] && row[cCol.postcode]) masterDirectory[key]['Postcode'] = row[cCol.postcode].toString().trim();
+            if (!masterDirectory[key]['Email Address'] && row[cCol.email]) masterDirectory[key]['Email Address'] = row[cCol.email].toString().trim();
           } else {
-            // Non-member or resident only in All Community
             masterDirectory[key] = {
               'MemberID': 'C-' + i,
               'PeopleRowIndex': null,
@@ -140,15 +154,15 @@ function getDatabase() {
               'Full Name': fullName,
               'First Name': parts[0] || '',
               'Surname': parts.slice(1).join(' ') || '',
-              'House Number': row[2] !== undefined && row[2] !== null ? row[2].toString().trim() : '',
-              'Address': row[3] !== undefined && row[3] !== null ? row[3].toString().trim() : '',
-              'Postcode': row[4] !== undefined && row[4] !== null ? row[4].toString().trim() : '',
-              'Contact Number': row[5] !== undefined && row[5] !== null ? row[5].toString().trim() : '',
+              'House Number': row[cCol.houseNo] !== undefined && row[cCol.houseNo] !== null ? row[cCol.houseNo].toString().trim() : '',
+              'Address': row[cCol.street] !== undefined && row[cCol.street] !== null ? row[cCol.street].toString().trim() : '',
+              'Postcode': row[cCol.postcode] !== undefined && row[cCol.postcode] !== null ? row[cCol.postcode].toString().trim() : '',
+              'Contact Number': row[cCol.phone] !== undefined && row[cCol.phone] !== null ? row[cCol.phone].toString().trim() : '',
               'Contact Type': typeVal,
-              'Notes': row[8] !== undefined && row[8] !== null ? row[8].toString().trim() : '',
-              'Area': row[0] !== undefined && row[0] !== null ? row[0].toString().trim() : '',
-              'Occupation': row[10] !== undefined && row[10] !== null ? row[10].toString().trim() : '',
-              'Email Address': row[11] !== undefined && row[11] !== null ? row[11].toString().trim() : ''
+              'Notes': row[cCol.notes] !== undefined && row[cCol.notes] !== null ? row[cCol.notes].toString().trim() : '',
+              'Area': row[cCol.area] !== undefined && row[cCol.area] !== null ? row[cCol.area].toString().trim() : '',
+              'Occupation': row[cCol.occupation] !== undefined && row[cCol.occupation] !== null ? row[cCol.occupation].toString().trim() : '',
+              'Email Address': row[cCol.email] !== undefined && row[cCol.email] !== null ? row[cCol.email].toString().trim() : ''
             };
           }
         }
@@ -276,12 +290,21 @@ function checkAndResetForNewYear(ss) {
       var commSheet = ss.getSheetByName('All Community');
       if (commSheet && commSheet.getLastRow() > 1) {
         var cData = commSheet.getDataRange().getValues();
+        var cHeaders = cData[0];
+        var typeColIdx = 6;
+        var statusColIdx = 7;
+        for (var c = 0; c < cHeaders.length; c++) {
+          var h = cHeaders[c] ? cHeaders[c].toString().toLowerCase() : '';
+          if (h.includes('type')) typeColIdx = c;
+          if (h.includes('status')) statusColIdx = c;
+        }
+
         for (var r = 1; r < cData.length; r++) {
-          var typeVal = cData[r][6] ? cData[r][6].toString().toLowerCase() : '';
+          var typeVal = cData[r][typeColIdx] ? cData[r][typeColIdx].toString().toLowerCase() : '';
           if (typeVal.includes('member') && !typeVal.includes('non')) {
-            commSheet.getRange(r + 1, 8).setValue('Unpaid');
+            commSheet.getRange(r + 1, statusColIdx + 1).setValue('Unpaid');
           } else {
-            commSheet.getRange(r + 1, 8).setValue('N/A');
+            commSheet.getRange(r + 1, statusColIdx + 1).setValue('N/A');
           }
         }
       }
@@ -392,13 +415,21 @@ function addDonation(donation) {
       var commSheet = ss.getSheetByName('All Community');
       if (commSheet && commSheet.getLastRow() > 1) {
         var cData = commSheet.getDataRange().getValues();
+        var cHeaders = cData[0];
+        var statusColIdx = 7;
+        var typeColIdx = 6;
+        for(var c=0; c<cHeaders.length; c++) {
+          if (cHeaders[c].toString().toLowerCase().includes('status')) statusColIdx = c;
+          if (cHeaders[c].toString().toLowerCase().includes('type')) typeColIdx = c;
+        }
+
         for (var i = 1; i < cData.length; i++) {
           var cName = cData[i][1] ? cData[i][1].toString().trim().toLowerCase() : '';
-          var typeVal = cData[i][6] ? cData[i][6].toString().toLowerCase() : '';
+          var typeVal = cData[i][typeColIdx] ? cData[i][typeColIdx].toString().toLowerCase() : '';
           
           if (cName.includes(firstName.toLowerCase()) && cName.includes(surname.toLowerCase())) {
             if (typeVal.includes('member') && !typeVal.includes('non')) {
-              commSheet.getRange(i + 1, 8).setValue('Paid');
+              commSheet.getRange(i + 1, statusColIdx + 1).setValue('Paid');
             }
             break;
           }
@@ -470,13 +501,21 @@ function deleteDonationByRow(rowIndex) {
       var commSheet = ss.getSheetByName('All Community');
       if (commSheet && commSheet.getLastRow() > 1) {
         var cData = commSheet.getDataRange().getValues();
+        var cHeaders = cData[0];
+        var statusColIdx = 7;
+        var typeColIdx = 6;
+        for(var c=0; c<cHeaders.length; c++) {
+          if (cHeaders[c].toString().toLowerCase().includes('status')) statusColIdx = c;
+          if (cHeaders[c].toString().toLowerCase().includes('type')) typeColIdx = c;
+        }
+
         for (var i = 1; i < cData.length; i++) {
           var cName = cData[i][1] ? cData[i][1].toString().trim().toLowerCase() : '';
-          var typeVal = cData[i][6] ? cData[i][6].toString().toLowerCase() : '';
+          var typeVal = cData[i][typeColIdx] ? cData[i][typeColIdx].toString().toLowerCase() : '';
           
           if (cName.includes(firstName.toLowerCase()) && cName.includes(surname.toLowerCase())) {
             if (typeVal.includes('member') && !typeVal.includes('non')) {
-              commSheet.getRange(i + 1, 8).setValue('Unpaid');
+              commSheet.getRange(i + 1, statusColIdx + 1).setValue('Unpaid');
             }
             break;
           }
@@ -562,6 +601,7 @@ function updateMember(member) {
     }
 
     if (foundCommRow !== -1) {
+      commSheet.getRange(foundCommRow, 1).setValue(member['Area'] || 'Unallocated');
       commSheet.getRange(foundCommRow, 2).setValue(fullName);
       commSheet.getRange(foundCommRow, 3).setValue(member['House Number'] || '');
       commSheet.getRange(foundCommRow, 4).setValue(member['Address'] || '');
@@ -576,7 +616,6 @@ function updateMember(member) {
         commSheet.getRange(foundCommRow, 8).setValue('N/A');
       }
     } else {
-      // If not in All Community yet, append it
       commSheet.appendRow([
         member['Area'] || 'Unallocated',
         fullName,
@@ -594,7 +633,7 @@ function updateMember(member) {
     }
   }
 
-  // 2. Update People Sheet if Member (or add if converted to member)
+  // 2. Update People Sheet if Member
   var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people');
   if (peopleSheet && peopleSheet.getLastRow() > 1) {
     var pData = peopleSheet.getDataRange().getValues();
@@ -634,7 +673,6 @@ function updateMember(member) {
         peopleSheet.appendRow(newRowVals);
       }
     } else {
-      // If converted from member to non-member, optionally remove from People tab or leave
       if (foundPeopleRow !== -1) {
         peopleSheet.deleteRow(foundPeopleRow);
       }
@@ -644,10 +682,275 @@ function updateMember(member) {
   return 'Success';
 }
 
-function deleteMemberByRow(rowIndex) {
+function deleteMemberRecord(peopleRowIndex, communityRowIndex, fullName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
-  if (!peopleSheet || rowIndex <= 1) return 'Error';
-  peopleSheet.deleteRow(rowIndex);
+  
+  if (peopleRowIndex && !isNaN(peopleRowIndex) && peopleRowIndex > 1) {
+    try {
+      var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people');
+      if (peopleSheet) {
+        peopleSheet.deleteRow(parseInt(peopleRowIndex));
+      }
+    } catch (e1) {
+      console.error("Error deleting from People sheet: " + e1.toString());
+    }
+  }
+
+  if (communityRowIndex && !isNaN(communityRowIndex) && communityRowIndex > 1) {
+    try {
+      var commSheet = ss.getSheetByName('All Community');
+      if (commSheet) {
+        commSheet.deleteRow(parseInt(communityRowIndex));
+      }
+    } catch (e2) {
+      console.error("Error deleting from All Community sheet: " + e2.toString());
+    }
+  } else if (fullName) {
+    try {
+      var commSheet = ss.getSheetByName('All Community');
+      if (commSheet && commSheet.getLastRow() > 1) {
+        var cData = commSheet.getDataRange().getValues();
+        for (var r = 1; r < cData.length; r++) {
+          var cName = cData[r][1] ? cData[r][1].toString().trim().toLowerCase() : '';
+          if (cName === fullName.toLowerCase()) {
+            commSheet.deleteRow(r + 1);
+            break;
+          }
+        }
+      }
+    } catch (e3) {
+      console.error("Error deleting fallback from All Community: " + e3.toString());
+    }
+  }
+
+  return 'Success';
+}
+
+function getFilteredCommunityData(selectedAreas, statusFilter) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('All Community') || ss.getSheetByName('All_Community') || ss.getSheetByName('Community');
+    if (!sheet) return { error: "'All Community' sheet tab not found." };
+    
+    var data = sheet.getDataRange().getValues();
+    if (data.length <= 1) return {};
+
+    var headers = data[0];
+    var col = { area: 0, fullName: 1, houseNo: 2, street: 3, postcode: 4, phone: 5, type: 6, status: 7, notes: 8, timestamp: 9, occupation: 10, email: 11 };
+
+    for (var c = 0; c < headers.length; c++) {
+      var h = headers[c] ? headers[c].toString().trim().toLowerCase() : '';
+      if (h.includes('area')) col.area = c;
+      else if (h.includes('full name') || h === 'name') col.fullName = c;
+      else if (h.includes('house') || h.includes('door')) col.houseNo = c;
+      else if (h.includes('email')) col.email = c;
+      else if (h.includes('street') || (h.includes('address') && !h.includes('email'))) col.street = c;
+      else if (h.includes('postcode')) col.postcode = c;
+      else if (h.includes('phone') || h.includes('mobile') || h.includes('contact')) col.phone = c;
+      else if (h.includes('type')) col.type = c;
+      else if (h.includes('status')) col.status = c;
+      else if (h.includes('note')) col.notes = c;
+      else if (h.includes('occupation')) col.occupation = c;
+    }
+
+    var groupedData = {};
+
+    for (var i = 1; i < data.length; i++) {
+      var row = data[i];
+      var areaVal = row[col.area] !== undefined && row[col.area] !== '' ? row[col.area].toString().trim() : 'Unallocated / Blank Area';
+      var includeArea = false;
+
+      if (!selectedAreas || selectedAreas.length === 0 || selectedAreas.indexOf('All') !== -1 || selectedAreas.indexOf('all') !== -1) {
+        includeArea = true;
+      } else if (selectedAreas.indexOf(areaVal) !== -1) {
+        includeArea = true;
+      }
+
+      if (!includeArea) continue;
+
+      var fullName = row[col.fullName] ? row[col.fullName].toString().trim() : '';
+      if (!fullName) continue;
+
+      var parts = fullName.split(/\s+/);
+      var memberType = row[col.type] !== undefined ? row[col.type].toString().trim() : 'Member';
+
+      if (statusFilter && statusFilter !== 'All') {
+        var isMem = memberType.toLowerCase().includes('member') && !memberType.toLowerCase().includes('non');
+        if (statusFilter === 'Member' && !isMem) continue;
+        if (statusFilter === 'Non-Member' && isMem) continue;
+      }
+
+      var street = row[col.street] !== undefined && row[col.street] !== '' ? row[col.street].toString().trim() : 'General Area';
+
+      var person = {
+        id: i + 1,
+        firstName: parts[0] || '',
+        lastName: parts.slice(1).join(' ') || '',
+        fullName: fullName,
+        houseNum: row[col.houseNo] !== undefined ? row[col.houseNo].toString().trim() : '',
+        street: street,
+        postcode: row[col.postcode] !== undefined ? row[col.postcode].toString().trim() : '',
+        contact: row[col.phone] !== undefined ? row[col.phone].toString().trim() : '',
+        email: (col.email !== undefined && row[col.email] !== undefined && row[col.email] !== '') ? row[col.email].toString().trim() : 'Not Provided',
+        occupation: (col.occupation !== undefined && row[col.occupation] !== undefined && row[col.occupation] !== '') ? row[col.occupation].toString().trim() : 'Not Provided',
+        status: memberType,
+        paymentStatus: row[col.status] !== undefined && row[col.status] !== '' ? row[col.status].toString().trim() : 'Unpaid',
+        notes: row[col.notes] !== undefined ? row[col.notes].toString().trim() : '',
+        area: areaVal
+      };
+
+      if (!groupedData[street]) groupedData[street] = [];
+      groupedData[street].push(person);
+    }
+
+    for (var st in groupedData) {
+      groupedData[st].sort(function(a, b) {
+        var numA = parseInt(a.houseNum.replace(/\D/g, '')) || 0;
+        var numB = parseInt(b.houseNum.replace(/\D/g, '')) || 0;
+        if (numA !== numB) return numA - numB;
+        return a.houseNum.localeCompare(b.houseNum, undefined, {numeric: true});
+      });
+    }
+
+    return groupedData;
+  } catch (err) {
+    return { error: err.toString() };
+  }
+}
+
+function submitCommunityUpdate(payload) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var pendingSheet = ss.getSheetByName('Pending_Updates') || ss.getSheetByName('Pending Updates');
+  if (!pendingSheet) {
+    pendingSheet = ss.insertSheet('Pending_Updates');
+    pendingSheet.appendRow(['Action Type', 'Community Row', 'Area', 'Full Name', 'House Number', 'Street', 'Phone', 'Type', 'Status', 'Notes', 'Occupation', 'Email', 'Timestamp']);
+  }
+
+  pendingSheet.appendRow([
+    payload.actionType || 'Note Update',
+    payload.communityRow || '',
+    payload.area || '',
+    payload.fullName || '',
+    payload.houseNum || '',
+    payload.street || '',
+    payload.phone || '',
+    payload.type || '',
+    payload.status || '',
+    payload.notes || '',
+    payload.occupation || '',
+    payload.email || '',
+    new Date()
+  ]);
+  return 'Success';
+}
+
+function processPendingUpdate(pendingRowIndex, decision, updatedData) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var pendingSheet = ss.getSheetByName('Pending_Updates') || ss.getSheetByName('Pending Updates');
+  if (!pendingSheet) return 'Error';
+
+  if (decision === 'approve') {
+    var pData = pendingSheet.getRange(pendingRowIndex, 1, 1, 13).getValues()[0];
+    var actionType = pData[0];
+    var originalArea = pData[2];
+    var communityRow = pData[1];
+
+    var finalArea = updatedData.area || originalArea || 'Unallocated';
+    var fullName = updatedData.fullName || '';
+    var houseNum = updatedData.houseNum || '';
+    var street = updatedData.street || '';
+    var postcode = updatedData.postcode || '';
+    var phone = updatedData.phone || '';
+    var email = updatedData.email || '';
+    var occupation = updatedData.occupation || '';
+    var type = updatedData.type || 'Member';
+    var status = updatedData.status || '';
+    var notes = updatedData.notes || '';
+    var currentDate = new Date();
+
+    var isMember = type.toLowerCase().includes('member') && !type.toLowerCase().includes('non');
+    if (status === 'N/A' || !isMember) status = 'N/A';
+
+    if (actionType === 'New Resident Sign-up' || actionType === 'Add' || !communityRow) {
+      var targetSheet = ss.getSheetByName('All Community') || ss.insertSheet('All Community');
+      targetSheet.appendRow([
+        finalArea,
+        fullName,
+        houseNum,
+        street,
+        postcode,
+        phone,
+        type,
+        status,
+        notes,
+        currentDate,
+        occupation,
+        email
+      ]);
+
+      if (isMember) {
+        var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
+        var nextId = peopleSheet.getLastRow();
+        peopleSheet.appendRow([
+          nextId,
+          fullName,
+          houseNum,
+          street,
+          postcode,
+          phone,
+          email,
+          notes
+        ]);
+      }
+    } else if (communityRow) {
+      var targetSheet = ss.getSheetByName('All Community');
+      if (targetSheet) {
+        if (actionType === 'Delete') {
+          targetSheet.deleteRow(parseInt(communityRow));
+        } else {
+          var rIdx = parseInt(communityRow);
+          targetSheet.getRange(rIdx, 1).setValue(finalArea);
+          targetSheet.getRange(rIdx, 2).setValue(fullName);
+          targetSheet.getRange(rIdx, 3).setValue(houseNum);
+          targetSheet.getRange(rIdx, 4).setValue(street);
+          targetSheet.getRange(rIdx, 5).setValue(postcode);
+          targetSheet.getRange(rIdx, 6).setValue(phone);
+          targetSheet.getRange(rIdx, 7).setValue(type);
+          targetSheet.getRange(rIdx, 8).setValue(status);
+          targetSheet.getRange(rIdx, 9).setValue(notes);
+          targetSheet.getRange(rIdx, 10).setValue(currentDate);
+          targetSheet.getRange(rIdx, 11).setValue(occupation);
+          targetSheet.getRange(rIdx, 12).setValue(email);
+
+          var peopleSheet = ss.getSheetByName('People') || ss.getSheets()[0];
+          var peopleData = peopleSheet.getDataRange().getValues();
+          var foundInPeopleRow = -1;
+          for (var r = 1; r < peopleData.length; r++) {
+            var pName = peopleData[r][1] ? peopleData[r][1].toString().trim().toLowerCase() : '';
+            if (pName === fullName.toLowerCase()) {
+              foundInPeopleRow = r + 1;
+              break;
+            }
+          }
+
+          if (isMember) {
+            if (foundInPeopleRow !== -1) {
+              peopleSheet.getRange(foundInPeopleRow, 3).setValue(houseNum);
+              peopleSheet.getRange(foundInPeopleRow, 4).setValue(street);
+              peopleSheet.getRange(foundInPeopleRow, 5).setValue(postcode);
+              peopleSheet.getRange(foundInPeopleRow, 6).setValue(phone);
+              peopleSheet.getRange(foundInPeopleRow, 7).setValue(email);
+              peopleSheet.getRange(foundInPeopleRow, 8).setValue(notes);
+            } else {
+              var nextId = peopleSheet.getLastRow();
+              peopleSheet.appendRow([nextId, fullName, houseNum, street, postcode, phone, email, notes]);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  pendingSheet.deleteRow(pendingRowIndex);
   return 'Success';
 }
