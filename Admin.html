@@ -42,6 +42,9 @@
                 </div>
             </div>
             <div class="flex items-center space-x-3">
+                <button onclick="manualSyncData()" class="bg-emerald-800 hover:bg-emerald-900 text-emerald-100 border border-emerald-600 px-3 py-1.5 rounded text-xs font-bold transition flex items-center space-x-1.5 shadow">
+                    <i class="fa-solid fa-arrows-rotate" id="syncIcon"></i><span>Sync Now</span>
+                </button>
                 <div id="syncStatus" class="text-xs bg-emerald-900/80 px-3 py-1.5 rounded-full text-emerald-200 border border-emerald-700 flex items-center space-x-2">
                     <i class="fa-solid fa-sync fa-spin"></i><span>Syncing...</span>
                 </div>
@@ -522,6 +525,16 @@
             } else {
                 document.getElementById('admin-login-error').classList.remove('hidden');
             }
+        }
+
+        function manualSyncData() {
+            const syncIcon = document.getElementById('syncIcon');
+            syncIcon.classList.add('fa-spin');
+            document.getElementById('syncStatus').innerHTML = '<i class="fa-solid fa-sync fa-spin"></i><span>Syncing...</span>';
+            loadData();
+            setTimeout(() => {
+                syncIcon.classList.remove('fa-spin');
+            }, 800);
         }
 
         function loadData() {
@@ -1122,7 +1135,7 @@
             return members.filter(m => {
                 const fullName = (m['Full Name'] || '').toLowerCase();
                 const matchesSearch = fullName.includes(search) || 
-                                      (m['Postcode'] && m['Postcode'].toLowerCase().includes(search));
+                                    (m['Postcode'] && m['Postcode'].toLowerCase().includes(search));
                 if (!matchesSearch) return false;
 
                 const currentYearKey = 'Membership ' + currentYear;
@@ -1298,9 +1311,9 @@
                 return;
             }
 
-            let csv = 'First Name,Last Name,House Number,Street Name,Postcode,Type,Donation,Donation Date,Amount\n';
+            let csv = 'First Name,Last Name,House Number,Street Name,Postcode,Type,Donation,Gift Aid,Donation Date,Amount\n';
             filtered.forEach(d => {
-                csv += `"${d['First Name'] || ''}","${d['Surname'] || ''}","${d['House Number'] || ''}","${d['Street'] || ''}","${d['Postcode'] || ''}","${d['Donation Type'] || ''}","${d['Payment Method'] || ''}","${formatDateDDMMMYYYY(d['Date Paid'])}","${parseFloat(d['Amount'] || 0).toFixed(2)}"\n`;
+                csv += `"${d['First Name'] || ''}","${d['Surname'] || ''}","${d['House Number'] || ''}","${d['Street'] || ''}","${d['Postcode'] || ''}","${d['Donation Type'] || ''}","${d['Payment Method'] || ''}","${d['Gift Aided?'] || 'No'}","${formatDateDDMMMYYYY(d['Date Paid'])}","${parseFloat(d['Amount'] || 0).toFixed(2)}"\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv' });
