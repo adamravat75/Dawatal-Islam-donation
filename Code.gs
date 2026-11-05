@@ -50,7 +50,16 @@ function getDatabase() {
     
     var masterDirectory = {};
 
-    // 1. SAFE PEOPLE FETCH (Members with rolling fee statuses)
+    // Helper to generate a collision-free key using Name + House Number + Street Name (ignoring missing postcodes)
+    function makeUniqueKey(fullName, houseNo, street) {
+      var cleanName = (fullName || '').toLowerCase().trim();
+      var cleanHouse = (houseNo || '').toLowerCase().trim();
+      var cleanStreet = (street || '').toLowerCase().trim();
+      
+      return cleanName + '|' + cleanHouse + '|' + cleanStreet;
+    }
+
+    // 1. SAFE PEOPLE FETCH
     try {
       var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people') || ss.getSheets()[0];
       if (peopleSheet && peopleSheet.getLastRow() > 1) {
@@ -76,7 +85,10 @@ function getDatabase() {
           if (!fullName) continue;
           
           var parts = fullName.split(/\s+/);
-          var key = fullName.toLowerCase();
+          var houseNo = row[pCol.houseNo] !== undefined && row[pCol.houseNo] !== null ? row[pCol.houseNo].toString().trim() : '';
+          var address = row[pCol.address] !== undefined && row[pCol.address] !== null ? row[pCol.address].toString().trim() : '';
+          var postcode = row[pCol.postcode] !== undefined && row[pCol.postcode] !== null ? row[pCol.postcode].toString().trim() : '';
+          var key = makeUniqueKey(fullName, houseNo, address);
           
           masterDirectory[key] = {
             'MemberID': i,
@@ -85,9 +97,9 @@ function getDatabase() {
             'Full Name': fullName,
             'First Name': parts[0] || '',
             'Surname': parts.slice(1).join(' ') || '',
-            'House Number': row[pCol.houseNo] !== undefined && row[pCol.houseNo] !== null ? row[pCol.houseNo].toString().trim() : '',
-            'Address': row[pCol.address] !== undefined && row[pCol.address] !== null ? row[pCol.address].toString().trim() : '',
-            'Postcode': row[pCol.postcode] !== undefined && row[pCol.postcode] !== null ? row[pCol.postcode].toString().trim() : '',
+            'House Number': houseNo,
+            'Address': address,
+            'Postcode': postcode,
             'Contact Number': row[pCol.phone] !== undefined && row[pCol.phone] !== null ? row[pCol.phone].toString().trim() : '',
             'Email Address': row[pCol.email] !== undefined && row[pCol.email] !== null ? row[pCol.email].toString().trim() : '',
             'Contact Type': 'Member',
@@ -107,7 +119,7 @@ function getDatabase() {
       console.error("People read error: " + errP.toString());
     }
 
-    // 2. SAFE ALL COMMUNITY FETCH (Dynamic header lookup)
+    // 2. SAFE ALL COMMUNITY FETCH
     try {
       var commSheet = ss.getSheetByName('All Community') || ss.getSheetByName('All_Community');
       if (commSheet && commSheet.getLastRow() > 1) {
@@ -135,7 +147,10 @@ function getDatabase() {
           var fullName = row[cCol.fullName] !== undefined ? row[cCol.fullName].toString().trim() : '';
           if (!fullName) continue;
           
-          var key = fullName.toLowerCase();
+          var houseNo = row[cCol.houseNo] !== undefined && row[cCol.houseNo] !== null ? row[cCol.houseNo].toString().trim() : '';
+          var street = row[cCol.street] !== undefined && row[cCol.street] !== null ? row[cCol.street].toString().trim() : '';
+          var postcode = row[cCol.postcode] !== undefined && row[cCol.postcode] !== null ? row[cCol.postcode].toString().trim() : '';
+          var key = makeUniqueKey(fullName, houseNo, street);
           var parts = fullName.split(/\s+/);
           var typeVal = row[cCol.type] !== undefined ? row[cCol.type].toString().trim() : 'Member';
           
@@ -144,7 +159,7 @@ function getDatabase() {
             masterDirectory[key]['Area'] = row[cCol.area] !== undefined ? row[cCol.area].toString().trim() : '';
             masterDirectory[key]['Contact Type'] = typeVal;
             masterDirectory[key]['Occupation'] = row[cCol.occupation] !== undefined ? row[cCol.occupation].toString().trim() : '';
-            if (!masterDirectory[key]['Postcode'] && row[cCol.postcode]) masterDirectory[key]['Postcode'] = row[cCol.postcode].toString().trim();
+            if (!masterDirectory[key]['Postcode'] && postcode) masterDirectory[key]['Postcode'] = postcode;
             if (!masterDirectory[key]['Email Address'] && row[cCol.email]) masterDirectory[key]['Email Address'] = row[cCol.email].toString().trim();
           } else {
             masterDirectory[key] = {
@@ -154,9 +169,9 @@ function getDatabase() {
               'Full Name': fullName,
               'First Name': parts[0] || '',
               'Surname': parts.slice(1).join(' ') || '',
-              'House Number': row[cCol.houseNo] !== undefined && row[cCol.houseNo] !== null ? row[cCol.houseNo].toString().trim() : '',
-              'Address': row[cCol.street] !== undefined && row[cCol.street] !== null ? row[cCol.street].toString().trim() : '',
-              'Postcode': row[cCol.postcode] !== undefined && row[cCol.postcode] !== null ? row[cCol.postcode].toString().trim() : '',
+              'House Number': houseNo,
+              'Address': street,
+              'Postcode': postcode,
               'Contact Number': row[cCol.phone] !== undefined && row[cCol.phone] !== null ? row[cCol.phone].toString().trim() : '',
               'Contact Type': typeVal,
               'Notes': row[cCol.notes] !== undefined && row[cCol.notes] !== null ? row[cCol.notes].toString().trim() : '',
@@ -245,12 +260,13 @@ function getDatabase() {
             'Full Name': r[3] !== undefined ? r[3].toString() : '',
             'House Number': r[4] !== undefined ? r[4].toString() : '',
             'Street': r[5] !== undefined ? r[5].toString() : '',
-            'Phone': r[6] !== undefined ? r[6].toString() : '',
-            'Type': r[7] !== undefined ? r[7].toString() : '',
-            'Status': r[8] !== undefined ? r[8].toString() : '',
-            'Notes': r[9] !== undefined ? r[9].toString() : '',
-            'Occupation': r[10] !== undefined ? r[10].toString() : '',
-            'Email': r[11] !== undefined ? r[11].toString() : '',
+            'Postcode': r[6] !== undefined ? r[6].toString() : '',
+            'Phone': r[7] !== undefined ? r[7].toString() : '',
+            'Type': r[8] !== undefined ? r[8].toString() : '',
+            'Status': r[9] !== undefined ? r[9].toString() : '',
+            'Notes': r[10] !== undefined ? r[10].toString() : '',
+            'Occupation': r[11] !== undefined ? r[11].toString() : '',
+            'Email': r[12] !== undefined ? r[12].toString() : '',
             'Timestamp': ts
           });
         }
@@ -823,7 +839,7 @@ function submitCommunityUpdate(payload) {
   var pendingSheet = ss.getSheetByName('Pending_Updates') || ss.getSheetByName('Pending Updates');
   if (!pendingSheet) {
     pendingSheet = ss.insertSheet('Pending_Updates');
-    pendingSheet.appendRow(['Action Type', 'Community Row', 'Area', 'Full Name', 'House Number', 'Street', 'Phone', 'Type', 'Status', 'Notes', 'Occupation', 'Email', 'Timestamp']);
+    pendingSheet.appendRow(['Action Type', 'Community Row', 'Area', 'Full Name', 'House Number', 'Street', 'Postcode', 'Phone', 'Type', 'Status', 'Notes', 'Occupation', 'Email', 'Timestamp']);
   }
 
   pendingSheet.appendRow([
@@ -833,6 +849,7 @@ function submitCommunityUpdate(payload) {
     payload.fullName || '',
     payload.houseNum || '',
     payload.street || '',
+    payload.postcode || '',
     payload.phone || '',
     payload.type || '',
     payload.status || '',
@@ -850,7 +867,7 @@ function processPendingUpdate(pendingRowIndex, decision, updatedData) {
   if (!pendingSheet) return 'Error';
 
   if (decision === 'approve') {
-    var pData = pendingSheet.getRange(pendingRowIndex, 1, 1, 13).getValues()[0];
+    var pData = pendingSheet.getRange(pendingRowIndex, 1, 1, 14).getValues()[0];
     var actionType = pData[0];
     var originalArea = pData[2];
     var communityRow = pData[1];
