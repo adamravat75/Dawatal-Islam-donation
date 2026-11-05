@@ -544,6 +544,31 @@ function deleteDonationByRow(rowIndex) {
   return 'Success';
 }
 
+function logDeletedRecordToAudit(ss, recordData, sourceTab) {
+  try {
+    var auditSheet = ss.getSheetByName('Audit_Log') || ss.getSheetByName('Audit Log');
+    if (!auditSheet) {
+      auditSheet = ss.insertSheet('Audit_Log');
+      auditSheet.appendRow(['Deleted Timestamp', 'Source Tab', 'Full Name', 'House Number', 'Street / Address', 'Postcode', 'Phone', 'Email', 'Type / Status', 'Notes / Details']);
+    }
+    
+    auditSheet.appendRow([
+      new Date(),
+      sourceTab || 'Unknown',
+      recordData.fullName || '',
+      recordData.houseNo || '',
+      recordData.address || '',
+      recordData.postcode || '',
+      recordData.phone || '',
+      recordData.email || '',
+      recordData.type || '',
+      recordData.notes || ''
+    ]);
+  } catch (e) {
+    console.error("Audit log error: " + e.toString());
+  }
+}
+
 function addMember(member) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var fullName = (member['First Name'] + ' ' + (member['Surname'] || '')).trim();
@@ -700,7 +725,43 @@ function updateMember(member) {
 
 function deleteMemberRecord(peopleRowIndex, communityRowIndex, fullName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  
+  var capturedData = { fullName: fullName, houseNo: '', address: '', postcode: '', phone: '', email: '', type: '', notes: '' };
+
+  // Capture details before deletion for the Audit Log
+  try {
+    if (communityRowIndex && !isNaN(communityRowIndex) && communityRowIndex > 1) {
+      var commSheet = ss.getSheetByName('All Community');
+      if (commSheet) {
+        var rVals = commSheet.getRange(parseInt(communityRowIndex), 1, 1, 12).getValues()[0];
+        capturedData.fullName = rVals[1] || fullName;
+        capturedData.houseNo = rVals[2] || '';
+        capturedData.address = rVals[3] || '';
+        capturedData.postcode = rVals[4] || '';
+        capturedData.phone = rVals[5] || '';
+        capturedData.type = rVals[6] || '';
+        capturedData.notes = rVals[8] || '';
+        capturedData.email = rVals[11] || '';
+      }
+    } else if (peopleRowIndex && !isNaN(peopleRowIndex) && peopleRowIndex > 1) {
+      var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people');
+      if (peopleSheet) {
+        var pVals = peopleSheet.getRange(parseInt(peopleRowIndex), 1, 1, peopleSheet.getLastColumn()).getValues()[0];
+        capturedData.fullName = pVals[1] || fullName;
+        capturedData.houseNo = pVals[2] || '';
+        capturedData.address = pVals[3] || '';
+        capturedData.postcode = pVals[4] || '';
+        capturedData.phone = pVals[5] || '';
+        capturedData.email = pVals[6] || '';
+      }
+    }
+  } catch (eCapture) {
+    console.error("Audit capture error: " + eCapture.toString());
+  }
+
+  // Log to Audit Worksheet
+  logDeletedRecordToAudit(ss, capturedData, communityRowIndex ? 'All Community' : 'People');
+
+  // Perform deletions
   if (peopleRowIndex && !isNaN(peopleRowIndex) && peopleRowIndex > 1) {
     try {
       var peopleSheet = ss.getSheetByName('People') || ss.getSheetByName('people');
